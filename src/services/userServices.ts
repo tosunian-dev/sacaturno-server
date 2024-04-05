@@ -3,9 +3,7 @@ import { encrypt, verify } from "../utils/pwEncrypt.handle";
 import { IUser } from "../interfaces/user.interface";
 import { Request, Response } from "express";
 import { jwtGen } from "../utils/jwtGen.handle";
-import { ProfileImage } from "../../../interfaces/profile_image.interface";
 import fs from "fs";
-import { log } from 'console';
 
 const SCreateUser = async (userData: IUser) => {
   const userExists = await UserModel.find({
