@@ -36,11 +36,13 @@ const SUpdateBusinessImage = async (imageData: {
   path: string;
   userId: string;
 }) => {
-
+  console.log('imagedata: ', imageData);
+  
 
   const updatedBusiness = await BusinessModel.findOneAndUpdate(
     { ownerID: imageData.userId },
-    { image: imageData.path }
+    { image: imageData.path },
+    { new: true }
   );
   if (updatedBusiness?.image !== "user.png") {
     fs.unlink(`profile_images\\${updatedBusiness?.image}`, async (error) => {
