@@ -35,13 +35,14 @@ const SEditBusinessData = async (businessData: IBusiness) => {
 const SUpdateBusinessImage = async (imageData: {
   path: string;
   userId: string;
+  file_name: string;
 }) => {
   console.log('imagedata: ', imageData);
   
 
   const updatedBusiness = await BusinessModel.findOneAndUpdate(
     { ownerID: imageData.userId },
-    { image: imageData.path },
+    { image: imageData.file_name },
     { new: true }
   );
   if (updatedBusiness?.image !== "user.png") {
