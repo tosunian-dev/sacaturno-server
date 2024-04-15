@@ -37,8 +37,6 @@ const SUpdateBusinessImage = async (imageData: {
   userId: string;
   file_name: string;
 }) => {
-  console.log('imagedata: ', imageData);
-  
 
   const updatedBusiness = await BusinessModel.findOneAndUpdate(
     { ownerID: imageData.userId },
