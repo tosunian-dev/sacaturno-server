@@ -17,7 +17,7 @@ router.get('/appointment/getclientapps/:clientID', checkAuth, getAppointmentsByC
 /** GET APPOINTMENT BY ID */
 router.get('/appointment/getbyid/:ID',checkAuth,  getAppointmentByID)
 /** BOOK APPOINTMENT */
-router.put('/appointment/book', checkAuth, bookAppointment)
+router.put('/appointment/book', bookAppointment)
 /** DELETE APPOINTMENT */
 router.delete('/appointment/delete/:ID', checkAuth, deleteAppointment)
 
