@@ -9,4 +9,5 @@ export interface IAppointment {
   name: string;
   title: string;
   _id?: string;
+  service: string;
 }

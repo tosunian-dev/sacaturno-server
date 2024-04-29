@@ -1,7 +1,9 @@
 import { IBusiness } from "../interfaces/business.interface";
+import { IService } from "../interfaces/service.interface";
 import BusinessModel from "../models/businessModel";
 import { Request, Response } from "express";
 import fs from "fs";
+import ServiceModel from "../models/serviceModel";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
   const businessExists = await BusinessModel.find({
@@ -67,11 +69,40 @@ const SGetBusinessByID = async ({ params }: Request) => {
   return businessData;
 };
 
+const SGetServicesByBusinessID = async ({ params }: Request) => {
+  const servicesData = await ServiceModel.find({ businessID: params.businessID });
+  return servicesData;
+};
+
+const SGetServicesByOwnerID = async ({ params }: Request) => {
+  console.log(params);
+  
+  const servicesData = await ServiceModel.find({ ownerID: params.ownerID });
+  return servicesData;
+};
+
+const SCreateService = async (serviceData: IService) => {
+  const serviceExists = await ServiceModel.find({ownerID: serviceData.name});
+  if (serviceExists.length > 0) {
+    return "SERVICE_EXISTS";
+  }
+  const createdBusiness = await ServiceModel.create(serviceData);
+  return createdBusiness;
+};
+
+const SDeleteService = async ({ params }: Request) => {
+  const serviceData = await ServiceModel.findByIdAndDelete(params.serviceID);
+};
+
 export {
   SCreateBusiness,
   SGetBusinessByOwnerID,
   SEditBusinessData,
   SUpdateBusinessImage,
   SGetBusinessByName,
-  SGetBusinessByID
+  SGetBusinessByID,
+  SCreateService,
+  SDeleteService,
+  SGetServicesByBusinessID,
+  SGetServicesByOwnerID
 };

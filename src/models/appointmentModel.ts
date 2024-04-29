@@ -1,5 +1,5 @@
 import { IAppointment } from "../interfaces/appointment.interface";
-import mongoose, { Schema, Types, model, Model, ObjectId } from 'mongoose';
+import { Schema, model } from 'mongoose';
 
 const AppointmentSchema = new Schema<IAppointment>(
     {
@@ -44,6 +44,11 @@ const AppointmentSchema = new Schema<IAppointment>(
             type: String,
             required: false,
             default: 'unbooked'
+        },
+        service: {
+            type: String,
+            required: false,
+            default: ""
         }
     },
     {
