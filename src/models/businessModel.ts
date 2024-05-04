@@ -15,6 +15,14 @@ const BusinessSchema = new Schema<IBusiness>(
             type: String,
             required: true
         },
+        email: {
+            type: String,
+            required: true
+        },
+        phone:{
+            type: Number,
+            required: false
+        },
         address: {
             type: String,
             required: true

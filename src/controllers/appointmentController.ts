@@ -21,6 +21,8 @@ const createAppointment = async ({body}:Request, res: Response) => {
 
 const bookAppointment = async ({body}:Request, res: Response) => {
     try {
+        console.log('body', body);
+        
         const appointmentBooked = await SBookAppointment(body)
         res.send(appointmentBooked)
     } catch (error) {

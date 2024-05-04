@@ -15,7 +15,7 @@
             <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
               <tbody>
                 <tr>
-                  <td><img src="https://react-email-demo-jsqyb0z9w-resend.vercel.app/static/twitch-logo.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
+                  <td><img src="https://i.imgur.com/r80SdXB.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                 </tr>
               </tbody>
             </table>
@@ -36,19 +36,35 @@
                 </tr>
               </tbody>
             </table>
-            <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px">
+            <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
               <tbody>
                 <tr>
                   <td>
-                    <p style="font-size:14px;line-height:1.5;margin:16px 0">Hola ${appointmentData.name} !,</p>
-                    <p style="font-size:14px;line-height:1.5;margin:16px 0">Reservaste un turno para el dia ${appointmentDate} para el servicio de "${}" en "${}" con los siguientes datos:</p>
 
+                    <p style="font-size:14px;line-height:1.5;margin:16px 0;">Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:</p>
 
-                    <b style="font-size:14px;line-height:1.5;">Nombre y apellido:   <span href="#" target="_blank">"${appointmentData.name}"</b>
-                    <b style="font-size:14px;line-height:1.5;">Telefono:   <span href="#" target="_blank">"${appointmentData.phone}"</span> </b>
-                    <b style="font-size:14px;line-height:1.5;">Correo:   <span href="#" target="_blank">"${appointmentData.email}"<span/> </b>
-
-                    <p style="font-size:14px;line-height:1.5;margin:16px 0">Si querés cancelar la reserva o ingresaste algun dato erroneo, contactate con la empresa al siguiente número: <!-- --> <a href="#" target="_blank">"${}"</a></p>
+                    <div style="display:flex;flex-direction: column;gap:10px">
+                      <div  style="display:flex;flex-direction: column;gap:2px;">
+                        <b style="font-size:14px;line-height:1;">Fecha y hora </b>
+                        <span>${appointmentDate}</span>
+                      </div>
+                      <div  style="display:flex;flex-direction: column;gap:2px;">
+                        <b style="font-size:14px;line-height:1;">Servicio </b>
+                        <span>${appointmentData.service}</span>
+                      </div>
+                      <div  style="display:flex;flex-direction: column;gap:2px;">
+                        <b style="font-size:14px;line-height:1;">Nombre y apellido </b>
+                        <span>${appointmentData.name}</span>
+                      </div>
+                      <div style="display:flex;flex-direction: column;gap:2px;">
+                        <b style="font-size:14px;line-height:1;">Telefono </b>
+                        <span>${appointmentData.phone}</span>                         
+                      </div>
+                      <div style="display:flex;flex-direction: column;gap:2px;">
+                        <b style="font-size:14px;line-height:1;">Correo </b>
+                        <span>${appointmentData.email}<span/> 
+                      </div>
+                    </div>  
 
                   </td>
                 </tr>
@@ -62,18 +78,11 @@
       <tbody>
         <tr>
           <td>
+
             <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
               <tbody style="width:100%">
                 <tr style="width:100%">
-                  <td align="right" data-id="__react-email-column" style="width:50%;padding-right:8px"><img src="https://react-email-demo-jsqyb0z9w-resend.vercel.app/static/twitch-icon-twitter.png" style="display:block;outline:none;border:none;text-decoration:none" /></td>
-                  <td align="left" data-id="__react-email-column" style="width:50%;padding-left:8px"><img src="https://react-email-demo-jsqyb0z9w-resend.vercel.app/static/twitch-icon-facebook.png" style="display:block;outline:none;border:none;text-decoration:none" /></td>
-                </tr>
-              </tbody>
-            </table>
-            <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-              <tbody style="width:100%">
-                <tr style="width:100%">
-                  <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">© 2022 Twitch, All Rights Reserved <br />350 Bush Street, 2nd Floor, San Francisco, CA, 94104 - USA</p>
+                  <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 Sacaturno. Todos los derechos reservados.</p>
                 </tr>
               </tbody>
             </table>
