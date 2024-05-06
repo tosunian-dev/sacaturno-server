@@ -55,7 +55,7 @@ const SClientEmailBookedAppointment = async (appointmentData: IAppointment, busi
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
                   <tbody>
                     <tr>
-                      <td><img src="https://i.imgur.com/3ZEnmEg.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
+                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                     </tr>
                   </tbody>
                 </table>
@@ -80,7 +80,7 @@ const SClientEmailBookedAppointment = async (appointmentData: IAppointment, busi
                   <tbody>
                     <tr>
                       <td>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Hola ${appointmentData.name} !,</p>
+                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Hola ${appointmentData.name}!,</p>
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Reservaste un turno para el dia <b>${appointmentDate}</b> para el servicio de <b>${appointmentData.service}</b> en <b>${businessData.name}</b> con los siguientes datos:</p>
     
                         <div style="display:flex;flex-direction: column;gap:12px">
@@ -88,10 +88,10 @@ const SClientEmailBookedAppointment = async (appointmentData: IAppointment, busi
                           <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido: </b>
                           <span style="margin-bottom:10px;font-size:12px;">${appointmentData.name}</span>
                                                     
-                          <b style="font-size:13px;line-height:1;text-transform:uppercase;">Telefono: </b>
+                          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono: </b>
                           <span style="margin-bottom:10px;font-size:12px;">${appointmentData.phone}</span>                         
                         
-                          <b style="font-size:13px;line-height:1;text-transform:uppercase;">Correo: </b>
+                          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo: </b>
                           <span style="font-size:12px;">${appointmentData.email}<span/>
 
                         </div>  
@@ -113,7 +113,7 @@ const SClientEmailBookedAppointment = async (appointmentData: IAppointment, busi
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
                   <tbody style="width:100%">
                     <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 Sacaturno. Todos los derechos reservados.</p>
+                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 SacaTurno. Todos los derechos reservados.</p>
                     </tr>
                   </tbody>
                 </table>
@@ -157,7 +157,7 @@ const SBusinessEmailBookedAppointment = async (appointmentData: IAppointment, bu
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
                   <tbody>
                     <tr>
-                      <td><img src="https://i.imgur.com/3ZEnmEg.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
+                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                     </tr>
                   </tbody>
                 </table>
@@ -187,19 +187,19 @@ const SBusinessEmailBookedAppointment = async (appointmentData: IAppointment, bu
     
                         <div style="display:flex;flex-direction: column;gap:12px">
                           
-                            <b style="font-size:13px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
                           
-                            <b style="font-size:13px;line-height:1;text-transform:uppercase;">Servicio </b>
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Servicio </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentData.service}</span>
                           
-                            <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido </b>
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Nombre y apellido </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentData.name}</span>
                          
-                            <b style="font-size:13px;line-height:1;text-transform:uppercase;">Telefono </b>
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>                         
                           
-                            <b style="font-size:13px;line-height:1;text-transform:uppercase;">Correo </b>
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo </b>
                             <span style="font-size:12px;">${appointmentData.email}<span/> 
                           
                         </div>  
@@ -220,7 +220,7 @@ const SBusinessEmailBookedAppointment = async (appointmentData: IAppointment, bu
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
                   <tbody style="width:100%">
                     <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 Sacaturno. Todos los derechos reservados.</p>
+                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 SacaTurno. Todos los derechos reservados.</p>
                     </tr>
                   </tbody>
                 </table>
