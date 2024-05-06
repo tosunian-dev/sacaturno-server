@@ -55,7 +55,7 @@ const SClientEmailBookedAppointment = async (appointmentData: IAppointment, busi
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
                   <tbody>
                     <tr>
-                      <td><img src="https://i.imgur.com/r80SdXB.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
+                      <td><img src="https://i.imgur.com/3ZEnmEg.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                     </tr>
                   </tbody>
                 </table>
@@ -83,19 +83,17 @@ const SClientEmailBookedAppointment = async (appointmentData: IAppointment, busi
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Hola ${appointmentData.name} !,</p>
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Reservaste un turno para el dia <b>${appointmentDate}</b> para el servicio de <b>${appointmentData.service}</b> en <b>${businessData.name}</b> con los siguientes datos:</p>
     
-                        <div style="display:flex;flex-direction: column;gap:6px">
-                          <div  style="display:flex;flex-direction: column;gap:2px;">
-                            <b style="font-size:14px;line-height:1.5;">Nombre y apellido: </b>
-                            <span>${appointmentData.name}</span>
-                          </div>
-                          <div style="display:flex;flex-direction: column;gap:2px;">
-                            <b style="font-size:14px;line-height:1.5;">Telefono: </b>
-                            <span>${appointmentData.phone}</span>                         
-                          </div>
-                          <div style="display:flex;flex-direction: column;gap:2px;">
-                            <b style="font-size:14px;line-height:1.5;">Correo: </b>
-                            <span>${appointmentData.email}<span/> 
-                          </div>
+                        <div style="display:flex;flex-direction: column;gap:12px">
+                      
+                          <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido: </b>
+                          <span style="margin-bottom:10px;font-size:12px;">${appointmentData.name}</span>
+                                                    
+                          <b style="font-size:13px;line-height:1;text-transform:uppercase;">Telefono: </b>
+                          <span style="margin-bottom:10px;font-size:12px;">${appointmentData.phone}</span>                         
+                        
+                          <b style="font-size:13px;line-height:1;text-transform:uppercase;">Correo: </b>
+                          <span style="font-size:12px;">${appointmentData.email}<span/>
+
                         </div>  
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Si querés cancelar la reserva o ingresaste algun dato erróneo, contactate con la empresa al siguiente número: <b>${businessData.phone}<b/></p>
     
@@ -159,7 +157,7 @@ const SBusinessEmailBookedAppointment = async (appointmentData: IAppointment, bu
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
                   <tbody>
                     <tr>
-                      <td><img src="https://i.imgur.com/r80SdXB.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
+                      <td><img src="https://i.imgur.com/3ZEnmEg.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                     </tr>
                   </tbody>
                 </table>
@@ -187,22 +185,22 @@ const SBusinessEmailBookedAppointment = async (appointmentData: IAppointment, bu
     
                         <p style="font-size:14px;line-height:1.5;margin:16px 0;">Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:</p>
     
-                        <div style="display:flex;flex-direction: column;gap:10px">
+                        <div style="display:flex;flex-direction: column;gap:12px">
                           
                             <b style="font-size:13px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
-                            <span style="margin-bottom:8px;">${appointmentDate}</span>
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
                           
                             <b style="font-size:13px;line-height:1;text-transform:uppercase;">Servicio </b>
-                            <span style="margin-bottom:8px;">${appointmentData.service}</span>
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.service}</span>
                           
                             <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido </b>
-                            <span style="margin-bottom:8px;">${appointmentData.name}</span>
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.name}</span>
                          
                             <b style="font-size:13px;line-height:1;text-transform:uppercase;">Telefono </b>
-                            <span style="margin-bottom:8px;">${appointmentData.phone}</span>                         
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>                         
                           
                             <b style="font-size:13px;line-height:1;text-transform:uppercase;">Correo </b>
-                            <span>${appointmentData.email}<span/> 
+                            <span style="font-size:12px;">${appointmentData.email}<span/> 
                           
                         </div>  
     
