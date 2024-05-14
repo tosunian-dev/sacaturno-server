@@ -6,6 +6,8 @@ import fs from "fs";
 import ServiceModel from "../models/serviceModel";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
+  console.log(businessData);
+  
   const businessExists = await BusinessModel.find({
     $or: [{ ownerID: businessData.ownerID }, { name: businessData.name }],
   });
@@ -75,8 +77,6 @@ const SGetServicesByBusinessID = async ({ params }: Request) => {
 };
 
 const SGetServicesByOwnerID = async ({ params }: Request) => {
-  console.log(params);
-  
   const servicesData = await ServiceModel.find({ ownerID: params.ownerID });
   return servicesData;
 };

@@ -13,7 +13,7 @@ const UserSchema = new Schema<IUser>(
     },
     phone: {
       type: Number,
-      required: true,
+      required: false,
     },
     password: {
       type: String,

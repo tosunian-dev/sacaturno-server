@@ -17,7 +17,7 @@ const BusinessSchema = new Schema<IBusiness>(
         },
         email: {
             type: String,
-            required: true
+            required: false
         },
         phone:{
             type: Number,
@@ -44,6 +44,11 @@ const BusinessSchema = new Schema<IBusiness>(
             type: String,
             required: true
         },
+        subscription: {
+            type: String,
+            required: false,
+            default: 'SC_FREE'
+        }
     },
     {
         timestamps: true,

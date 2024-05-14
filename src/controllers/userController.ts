@@ -31,7 +31,7 @@ const loginUser = async ({body}: Request, res: Response) => {
                 sameSite: 'lax',
                 maxAge: 1000 * 60 * 60 * 24 * 30,
                 path: '/',
-                domain: 'http://127.0.0.1:3000'
+                domain: 'http://127.0.0.1:3000' || 'https://sacaturno.com.ar' || 'https://www.sacaturno.com.ar'
             })
             res.setHeader('Set-Cookie', serializedToken)
             res.send({response_data});

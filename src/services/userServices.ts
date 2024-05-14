@@ -6,12 +6,11 @@ import { jwtGen } from "../utils/jwtGen.handle";
 import fs from "fs";
 
 const SCreateUser = async (userData: IUser) => {
-  const userExists = await UserModel.find({
-    $or: [{ email: userData.email }, { phone: userData.phone }],
-  });
+  const userExists = await UserModel.find({ email: userData.email });  
   if (userExists.length > 0) {
     return "USER_EXISTS";
   }
+
   const pwEncrypted = await encrypt(userData.password);
   userData.password = pwEncrypted;
   const createdUser = await UserModel.create(userData);
@@ -28,8 +27,6 @@ const SGetUser = async ({ params }: Request) => {
 };
 
 const SEditUser = async (req: IUser) => {
-  console.log(req);
-  
   const editedUser = await UserModel.findOneAndUpdate({ _id: req._id }, req, {
     new: true,
   });

@@ -10,4 +10,5 @@ export interface IBusiness {
   dayEnd: string;
   _id?: string;
   email: string;
+  subscription?: string;
 }
