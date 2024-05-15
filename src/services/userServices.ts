@@ -62,6 +62,8 @@ const SUpdateUserProfileImage = async (imageData: {
   path: string;
   userId: string;
 }) => {
+  console.log(imageData.path, imageData.userId);
+  
   const updatedUser = await UserModel.findByIdAndUpdate(imageData.userId, {
     profileImage: imageData.path,
   }, {new: true});
