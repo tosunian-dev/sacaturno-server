@@ -4,18 +4,34 @@ import BusinessModel from "../models/businessModel";
 import { Request, Response } from "express";
 import fs from "fs";
 import ServiceModel from "../models/serviceModel";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import ISubscription from "../interfaces/subscription.interface";
+import SubscriptionModel from "../models/subscriptionModel";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
-  console.log(businessData);
-  
+  // CHECK IF BUSINESS EXISTS
   const businessExists = await BusinessModel.find({
     $or: [{ ownerID: businessData.ownerID }, { name: businessData.name }],
   });
   if (businessExists.length > 0) {
     return "BUSINESS_EXISTS";
   }
+  // CREATE BUSINESS
   const createdBusiness = await BusinessModel.create(businessData);
-  return createdBusiness;
+  // CREATE SUBSCRIPTION DETAILS
+  const paymentDate = dayjs();
+  const expiracyDate = paymentDate.add(1, "month");
+  const subDetails: ISubscription = {
+    ownerID: businessData.ownerID,
+    businessID: createdBusiness._id,
+    subscriptionType: "SC_FREE",
+    paymentDate: paymentDate.toDate(),
+    expiracyDate: expiracyDate.toDate(),
+  };
+  const subscriptionDetails = await SubscriptionModel.create(subDetails);
+
+  return { createdBusiness, subscriptionDetails };
 };
 
 const SGetBusinessByOwnerID = async ({ params }: Request) => {
@@ -41,7 +57,6 @@ const SUpdateBusinessImage = async (imageData: {
   userId: string;
   file_name: string;
 }) => {
-
   const updatedBusiness = await BusinessModel.findOneAndUpdate(
     { ownerID: imageData.userId },
     { image: imageData.file_name },
@@ -58,10 +73,10 @@ const SUpdateBusinessImage = async (imageData: {
 };
 
 const SGetBusinessByName = async ({ params }: Request) => {
-  const regex = new RegExp(params.name, 'i');
+  const regex = new RegExp(params.name, "i");
   const businessData = await BusinessModel.find({ name: regex });
-  if(businessData.length === 0){
-    return "BUSINESS_NOT_FOUND"
+  if (businessData.length === 0) {
+    return "BUSINESS_NOT_FOUND";
   }
   return businessData;
 };
@@ -72,7 +87,9 @@ const SGetBusinessByID = async ({ params }: Request) => {
 };
 
 const SGetServicesByBusinessID = async ({ params }: Request) => {
-  const servicesData = await ServiceModel.find({ businessID: params.businessID });
+  const servicesData = await ServiceModel.find({
+    businessID: params.businessID,
+  });
   return servicesData;
 };
 
@@ -82,7 +99,7 @@ const SGetServicesByOwnerID = async ({ params }: Request) => {
 };
 
 const SCreateService = async (serviceData: IService) => {
-  const serviceExists = await ServiceModel.find({ownerID: serviceData.name});
+  const serviceExists = await ServiceModel.find({ ownerID: serviceData.name });
   if (serviceExists.length > 0) {
     return "SERVICE_EXISTS";
   }
@@ -104,5 +121,5 @@ export {
   SCreateService,
   SDeleteService,
   SGetServicesByBusinessID,
-  SGetServicesByOwnerID
+  SGetServicesByOwnerID,
 };

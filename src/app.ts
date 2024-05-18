@@ -5,6 +5,7 @@ import userRoutes from './routes/userRoutes';
 import appointmentRoutes from './routes/appointmentRoutes';
 import businessRoutes from './routes/businessRoutes';
 import cookieParser from 'cookie-parser'
+import subscriptionRoutes from './routes/subscriptionRoutes';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -25,4 +26,4 @@ app.use(express.json())
 app.use('/api', userRoutes)
 app.use('/api', appointmentRoutes)
 app.use('/api', businessRoutes)
-
+app.use('/api', subscriptionRoutes)
