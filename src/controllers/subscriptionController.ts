@@ -1,3 +1,4 @@
+import axios from "axios";
 import {
   SGetSubscriptionByOwnerID,
   SGetSubscriptionByBusinessID,
@@ -32,7 +33,7 @@ const getSubscriptionByOwnerID = async (req: Request, res: Response) => {
 
 const createMercadoPagoPreference = async (req: Request, res: Response) => {
   try {
-    const preferenceData = await SCreateMercadoPagoPreference(req);    
+    const preferenceData = await SCreateMercadoPagoPreference(req);
     if (!preferenceData) {
       return res.send("ERROR_PREFERENCE_CREATION");
     }
@@ -42,13 +43,31 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
   }
 };
 
-const paymentWebhook = async (req:Request, res: Response) => {
-  console.log(req)
-}
+const paymentWebhook = async (req: Request, res: Response) => {
+  console.log(req);
+  
+  const paymentInfo = req.body;
+  // GET PAYMENT INFO BY ID //
+  axios
+    .get("https://api.mercadopago.com/v1/payments/" + paymentInfo.data.id, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+      },
+    })
+    .then(async (response) => {
+      const { data } = response;
+      console.log(data);
+      
+    })
+    .catch((error: any) => {
+      console.log(error);
+    });
+};
 
 export {
   getSubscriptionByOwnerID,
   getSubscriptionByBusinessID,
   createMercadoPagoPreference,
-  paymentWebhook
+  paymentWebhook,
 };
