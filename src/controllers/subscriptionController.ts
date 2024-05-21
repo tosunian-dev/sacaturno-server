@@ -3,6 +3,7 @@ import {
   SGetSubscriptionByOwnerID,
   SGetSubscriptionByBusinessID,
   SCreateMercadoPagoPreference,
+  SUpdateSubscriptionPlan
 } from "../services/subscriptionServices";
 import { handleError } from "../utils/error.handle";
 import { Request, Response } from "express";
@@ -58,24 +59,22 @@ const paymentWebhook = async (req: Request, res: Response) => {
     .then(async (response) => {
       const { data } = response;
       console.log(data.metadata);
-      console.log(data.metadata.businessID);
-      console.log(data.metadata.business_id);
+      console.log('businessID',data.metadata.businessID);
+      console.log('business_id',data.metadata.business_id);
       
       const paymentDate = dayjs();
       const expiracyDate = paymentDate.add(1, "month");
       if (data.status == "approved") {
         const updatedSubscription = {
+          businessID: data.metadata.business_id,
           subscriptionType: "SC_FULL",
           paymentDate: paymentDate.toDate(),
           expiracyDate: expiracyDate.toDate(),
         };
-        console.log(updatedSubscription)
-        const updated= await SubscriptionModel.findOneAndUpdate(
-          { businessID: data.metadata.businessID },
-          updatedSubscription, {new: true}
-        );
-        console.log(updated);
-        
+       
+        await axios.put(`https://sacaturno-server-production.up.railway.app/api/subscription/update`, updatedSubscription).then((data) => {
+          console.log('updatesubresponse',data)
+        })
       }
     })
     .catch((error: any) => {
@@ -83,9 +82,19 @@ const paymentWebhook = async (req: Request, res: Response) => {
     });
 };
 
+const updateSubscriptionPlan = async (req:Request, res: Response) => {
+  try {
+    const update = await SUpdateSubscriptionPlan(req)
+    return update
+  } catch (error) {
+    handleError(res, "ERROR_UPDATE_SUBSCRIPTION");
+  }
+}
+
 export {
   getSubscriptionByOwnerID,
   getSubscriptionByBusinessID,
   createMercadoPagoPreference,
   paymentWebhook,
+  updateSubscriptionPlan
 };
