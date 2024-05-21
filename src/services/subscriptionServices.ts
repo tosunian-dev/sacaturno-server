@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import SubscriptionModel from "../models/subscriptionModel";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import mercadopago from "mercadopago";
+import dayjs from "dayjs";
 
 interface IPreference {
   items: {
@@ -75,6 +76,8 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
         paymentDate: body.paymentDate,
         expiracyDate: body.expiracyDate,
         subscriptionType: body.subscriptionType,
+        expiracyMonth: dayjs().month()+2,
+        expiracyDay: dayjs().date()
       },
       { new: true }
     );
