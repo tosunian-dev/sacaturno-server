@@ -23,6 +23,14 @@ const subscriptionSchema = new Schema<ISubscription>(
     expiracyDate: {
       type: Date,
       required: true,
+    },
+    expiracyDay: {
+      type: Number,
+      required: false
+    },
+    expiracyMonth: {
+      type: Number,
+      required: false
     }
   },
   {

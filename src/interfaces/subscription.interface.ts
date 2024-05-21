@@ -4,4 +4,6 @@ export default interface ISubscription {
   subscriptionType: "SC_FREE" | "SC_FULL" | "SC_EXPIRED";
   paymentDate: Date;
   expiracyDate: Date;
+  expiracyDay?: number,
+  expiracyMonth?: number
 }
