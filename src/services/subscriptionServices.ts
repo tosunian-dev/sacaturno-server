@@ -72,7 +72,7 @@ const SUpdateSubscriptionPlan = async ({body}: Request) => {
     console.log('body', body);
     
     const updated = await SubscriptionModel.findOneAndUpdate(
-      { businessID: body.business_id },
+      { businessID: body.businessID },
       body,
       { new: true }
     );
