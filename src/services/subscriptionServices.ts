@@ -69,8 +69,6 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
 
 const SUpdateSubscriptionPlan = async ({ body }: Request) => {
   try {
-    console.log("body", body);
-
     const updated = await SubscriptionModel.findOneAndUpdate(
       { businessID: body.businessID },
       {
@@ -81,7 +79,9 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
       { new: true }
     );
     console.log("updatedSub", updated);
-    return updated;
+    if (updated !== null) {
+      return updated;
+    }
   } catch (error) {
     return "ERROR_UPDATE_SUBSCRIPTION_TYPE";
   }
