@@ -44,8 +44,6 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
 };
 
 const paymentWebhook = async (req: Request, res: Response) => {
-  console.log(req);
-  
   const paymentInfo = req.body;
   // GET PAYMENT INFO BY ID //
   axios
@@ -57,7 +55,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
     })
     .then(async (response) => {
       const { data } = response;
-      console.log(data);
+      console.log(data.metadata);
       
     })
     .catch((error: any) => {

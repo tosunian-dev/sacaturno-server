@@ -43,7 +43,7 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
         id: 'SC_FULL_PLAN',
         title: req.body.title,
         quantity: Number(req.body.quantity),
-        unit_price: Number(req.body.unit_price),
+        unit_price: Number(process.env.FULL_PLAN_PRICE),
         currency_id: req.body.currency_id,
       },
     ],
