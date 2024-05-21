@@ -69,6 +69,8 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
 
 const SUpdateSubscriptionPlan = async ({body}: Request) => {
   try {
+    console.log('body', body);
+    
     const updated = await SubscriptionModel.findOneAndUpdate(
       { businessID: body.business_id },
       body,
