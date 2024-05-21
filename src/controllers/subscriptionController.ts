@@ -6,6 +6,8 @@ import {
 } from "../services/subscriptionServices";
 import { handleError } from "../utils/error.handle";
 import { Request, Response } from "express";
+import SubscriptionModel from "../models/subscriptionModel";
+import dayjs from "dayjs";
 
 const getSubscriptionByBusinessID = async (req: Request, res: Response) => {
   try {
@@ -56,7 +58,11 @@ const paymentWebhook = async (req: Request, res: Response) => {
     .then(async (response) => {
       const { data } = response;
       console.log(data.metadata);
-      
+      const paymentDate = dayjs();
+      const expiracyDate = paymentDate.add(1, "month");
+      if(data.status == 'approved'){
+        await SubscriptionModel.findOneAndUpdate({businessID: data.metadata.business_id}, {subscriptionType: 'SC_FULL', paymentDate: paymentDate.toDate(), expiracyDate: expiracyDate.toDate()})
+      }
     })
     .catch((error: any) => {
       console.log(error);
