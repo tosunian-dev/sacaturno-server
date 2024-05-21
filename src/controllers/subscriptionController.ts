@@ -1,6 +1,7 @@
 import {
   SGetSubscriptionByOwnerID,
   SGetSubscriptionByBusinessID,
+  SCreateMercadoPagoPreference,
 } from "../services/subscriptionServices";
 import { handleError } from "../utils/error.handle";
 import { Request, Response } from "express";
@@ -29,7 +30,25 @@ const getSubscriptionByOwnerID = async (req: Request, res: Response) => {
   }
 };
 
-export { 
-  getSubscriptionByOwnerID, 
-  getSubscriptionByBusinessID 
+const createMercadoPagoPreference = async (req: Request, res: Response) => {
+  try {
+    const preferenceData = await SCreateMercadoPagoPreference(req);    
+    if (!preferenceData) {
+      return res.send("ERROR_PREFERENCE_CREATION");
+    }
+    res.send(preferenceData);
+  } catch (error) {
+    handleError(res, "ERROR_GET_SUBSCRIPTION");
+  }
+};
+
+const paymentWebhook = async (req:Request, res: Response) => {
+  console.log(req)
+}
+
+export {
+  getSubscriptionByOwnerID,
+  getSubscriptionByBusinessID,
+  createMercadoPagoPreference,
+  paymentWebhook
 };
