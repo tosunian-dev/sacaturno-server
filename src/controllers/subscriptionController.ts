@@ -58,10 +58,24 @@ const paymentWebhook = async (req: Request, res: Response) => {
     .then(async (response) => {
       const { data } = response;
       console.log(data.metadata);
+      console.log(data.metadata.businessID);
+      console.log(data.metadata.business_id);
+      
       const paymentDate = dayjs();
       const expiracyDate = paymentDate.add(1, "month");
-      if(data.status == 'approved'){
-        await SubscriptionModel.findOneAndUpdate({businessID: data.metadata.business_id}, {subscriptionType: 'SC_FULL', paymentDate: paymentDate.toDate(), expiracyDate: expiracyDate.toDate()})
+      if (data.status == "approved") {
+        const updatedSubscription = {
+          subscriptionType: "SC_FULL",
+          paymentDate: paymentDate.toDate(),
+          expiracyDate: expiracyDate.toDate(),
+        };
+        console.log(updatedSubscription)
+        const updated= await SubscriptionModel.findOneAndUpdate(
+          { businessID: data.metadata.businessID },
+          updatedSubscription, {new: true}
+        );
+        console.log(updated);
+        
       }
     })
     .catch((error: any) => {
