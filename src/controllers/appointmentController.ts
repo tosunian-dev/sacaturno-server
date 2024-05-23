@@ -6,7 +6,8 @@ import {
     SGetAppointmentByID,
     SGetAppointmentsByBusinessID, 
     SGetAppointmentsByClientID,
-    SDeleteAppointment
+    SDeleteAppointment,
+    SCancelBooking
 } from "../services/appointmentServices";
 
 const createAppointment = async ({body}:Request, res: Response) => {
@@ -67,13 +68,23 @@ const deleteAppointment = async (req:Request, res:Response) => {
     
 }
 
+const cancelBooking = async (req:Request, res: Response) => {
+    try {
+        const canceledBooking = await SCancelBooking(req)
+        res.send(canceledBooking)
+    } catch (error) {
+        handleError(res, 'ERROR_CANCEL_BOOKING'); 
+    }
+}
+
 export {
     createAppointment,
     bookAppointment,
     getAppointmentByID,
     getAppointmentsByBusinessID,
     getAppointmentsByClientID,
-    deleteAppointment
+    deleteAppointment,
+    cancelBooking
 }
 
 

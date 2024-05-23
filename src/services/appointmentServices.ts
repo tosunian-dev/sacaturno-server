@@ -3,9 +3,13 @@ import { IAppointment } from "../interfaces/appointment.interface";
 import { Request } from "express";
 import { Resend } from "resend";
 import dayjs from "dayjs";
-import updateLocale from 'dayjs/plugin/updateLocale'
+import updateLocale from "dayjs/plugin/updateLocale";
 import { IBusiness } from "../interfaces/business.interface";
 import BusinessModel from "../models/businessModel";
+
+interface IAppointmentWithEmail extends IAppointment {
+  businessEmail: string;
+}
 
 const SCreateAppointment = async (appointmentData: IAppointment) => {
   console.log(appointmentData);
@@ -23,16 +27,21 @@ const SBookAppointment = async (data: IAppointment) => {
   if (appointmentData === null) {
     return "APPOINTMENT_NOT_FOUND";
   }
-  const businessData = await BusinessModel.findById(appointmentData.businessID)
-  if(businessData !== null) {
+  const businessData = await BusinessModel.findById(appointmentData.businessID);
+  if (businessData !== null) {
     SClientEmailBookedAppointment(appointmentData, businessData);
     SBusinessEmailBookedAppointment(appointmentData, businessData);
   }
   return appointmentData;
 };
 
-const SClientEmailBookedAppointment = async (appointmentData: IAppointment, businessData: IBusiness) => {
-  const appointmentDate = dayjs(appointmentData.start).format("D [de] MMMM [|] HH:mm [hs]")
+const SClientEmailBookedAppointment = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness
+) => {
+  const appointmentDate = dayjs(appointmentData.start).format(
+    "D [de] MMMM [|] HH:mm [hs]"
+  );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
@@ -133,8 +142,13 @@ const SClientEmailBookedAppointment = async (appointmentData: IAppointment, busi
   console.log({ data });
 };
 
-const SBusinessEmailBookedAppointment = async (appointmentData: IAppointment, businessData: IBusiness) => {  
-  const appointmentDate = dayjs(appointmentData.start).format("D [de] MMMM [|] HH:mm [hs]")
+const SBusinessEmailBookedAppointment = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness
+) => {
+  const appointmentDate = dayjs(appointmentData.start).format(
+    "D [de] MMMM [|] HH:mm [hs]"
+  );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
@@ -264,6 +278,136 @@ const SDeleteAppointment = async ({ params }: Request) => {
   return appointment;
 };
 
+const SCancelBooking = async ({ body }: Request) => {
+  console.log(body);
+  const appointment = await AppointmentModel.findByIdAndUpdate(
+    body._id,
+    {
+      title: "Disponible",
+      name: "",
+      email: "",
+      phone: "",
+      status: "unbooked",
+    },
+    { new: false }
+  );
+  SBusinessCancelledBooking(body)
+  return appointment;
+};
+
+const SBusinessCancelledBooking = async (
+  appointmentData: IAppointmentWithEmail
+) => {
+  console.log('email', appointmentData);
+  
+  const appointmentDate = dayjs(appointmentData.start).format(
+    "D [de] MMMM [|] HH:mm [hs]"
+  );
+  const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
+  const { data, error } = await resend.emails.send({
+    from: "SacaTurno <noresponder@sacaturno.com.ar>",
+    to: [appointmentData.businessEmail],
+    subject: "Reserva cancelada",
+    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <html dir="ltr" lang="en">
+    
+      <head>
+        <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
+      </head>
+      <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Tu cliente canceló su turno<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
+      </div>
+    
+      <body style="background-color:#efeef1;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
+        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
+          <tbody>
+            <tr style="width:100%">
+              <td>
+                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
+                  <tbody>
+                    <tr>
+                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
+                    </tr>
+                  </tbody>
+                </table>
+                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
+                  <tbody>
+                    <tr>
+                      <td>
+                        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
+                          <tbody style="width:100%">
+                            <tr style="width:100%">
+                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
+                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
+                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
+                  <tbody>
+                    <tr>
+                      <td>
+    
+                        <p style="font-size:14px;line-height:1.5;margin:16px 0;"Tu cliente ha cancelado una reserva de turno en tu empresa</b>.</p>
+    
+                        <div style="display:flex;flex-direction: column;gap:12px">
+                          
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
+                          
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Servicio </b>
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.service}</span>
+                          
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Nombre y apellido </b>
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.name}</span>
+                         
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono </b>
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>                         
+                          
+                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo </b>
+                            <span style="font-size:12px;">${appointmentData.email}<span/> 
+                          
+                        </div>  
+    
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
+          <tbody>
+            <tr>
+              <td>
+    
+                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
+                  <tbody style="width:100%">
+                    <tr style="width:100%">
+                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 SacaTurno. Todos los derechos reservados.</p>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </body>
+    
+    </html>`,
+  });
+
+  if (error) {
+    return console.error({ error });
+  }
+
+  console.log({ data });
+};
+
 export {
   SCreateAppointment,
   SBookAppointment,
@@ -271,4 +415,5 @@ export {
   SGetAppointmentsByClientID,
   SGetAppointmentByID,
   SDeleteAppointment,
+  SCancelBooking,
 };
