@@ -16,6 +16,18 @@ interface IAppointmentWithEmail extends IAppointment {
 dayjs.extend(timezone);
 dayjs.extend(utc);
 dayjs.extend(advanced);
+dayjs.extend(updateLocale)
+dayjs.updateLocale('en', {
+  months: [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
+    "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ]
+})
+dayjs.updateLocale('en', {
+  weekdays: [
+    "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"
+  ]
+})
 
 const SCreateAppointment = async (appointmentData: IAppointment) => {
   console.log(appointmentData);
