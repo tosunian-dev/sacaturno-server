@@ -13,6 +13,9 @@ import advanced from "dayjs/plugin/advancedFormat";
 interface IAppointmentWithEmail extends IAppointment {
   businessEmail: string;
 }
+dayjs.extend(timezone);
+dayjs.extend(utc);
+dayjs.extend(advanced);
 
 const SCreateAppointment = async (appointmentData: IAppointment) => {
   console.log(appointmentData);
@@ -42,10 +45,8 @@ const SClientEmailBookedAppointment = async (
   appointmentData: IAppointment,
   businessData: IBusiness
 ) => {
-  dayjs.extend(timezone);
-  dayjs.extend(utc);
-  dayjs.extend(advanced);
-  const appointmentDate = dayjs(appointmentData.start).format(
+
+  const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
     "D [de] MMMM [|] HH:mm [hs]"
   );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
@@ -152,10 +153,8 @@ const SBusinessEmailBookedAppointment = async (
   appointmentData: IAppointment,
   businessData: IBusiness
 ) => {
-  dayjs.extend(timezone);
-  dayjs.extend(utc);
-  dayjs.extend(advanced);
-  const appointmentDate = dayjs(appointmentData.start).format(
+
+  const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
     "D [de] MMMM [|] HH:mm [hs]"
   );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
@@ -307,10 +306,8 @@ const SCancelBooking = async ({ body }: Request) => {
 const SBusinessCancelledBooking = async (
   appointmentData: IAppointmentWithEmail
 ) => {
-  dayjs.extend(timezone);
-  dayjs.extend(utc);
-  dayjs.extend(advanced);  
-  const appointmentDate = dayjs(appointmentData.start).format(
+  
+  const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
     "D [de] MMMM [|] HH:mm [hs]"
   );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
