@@ -6,7 +6,10 @@ import dayjs from "dayjs";
 import updateLocale from "dayjs/plugin/updateLocale";
 import { IBusiness } from "../interfaces/business.interface";
 import BusinessModel from "../models/businessModel";
-
+import utc from "dayjs/plugin/utc";
+import "dayjs/locale/es-mx";
+import timezone from "dayjs/plugin/timezone";
+import advanced from "dayjs/plugin/advancedFormat";
 interface IAppointmentWithEmail extends IAppointment {
   businessEmail: string;
 }
@@ -39,6 +42,9 @@ const SClientEmailBookedAppointment = async (
   appointmentData: IAppointment,
   businessData: IBusiness
 ) => {
+  dayjs.extend(timezone);
+  dayjs.extend(utc);
+  dayjs.extend(advanced);
   const appointmentDate = dayjs(appointmentData.start).format(
     "D [de] MMMM [|] HH:mm [hs]"
   );
@@ -146,6 +152,9 @@ const SBusinessEmailBookedAppointment = async (
   appointmentData: IAppointment,
   businessData: IBusiness
 ) => {
+  dayjs.extend(timezone);
+  dayjs.extend(utc);
+  dayjs.extend(advanced);
   const appointmentDate = dayjs(appointmentData.start).format(
     "D [de] MMMM [|] HH:mm [hs]"
   );
@@ -298,8 +307,9 @@ const SCancelBooking = async ({ body }: Request) => {
 const SBusinessCancelledBooking = async (
   appointmentData: IAppointmentWithEmail
 ) => {
-  console.log('email', appointmentData);
-  
+  dayjs.extend(timezone);
+  dayjs.extend(utc);
+  dayjs.extend(advanced);  
   const appointmentDate = dayjs(appointmentData.start).format(
     "D [de] MMMM [|] HH:mm [hs]"
   );
@@ -351,7 +361,7 @@ const SBusinessCancelledBooking = async (
                     <tr>
                       <td>
     
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0;"Tu cliente ha cancelado una reserva de turno en tu empresa</b>.</p>
+                        <p style="font-size:14px;line-height:1.5;margin:16px 0;"Tu cliente ha cancelado una reserva de turno en tu empresa</b>Tu cliente canceló su reserva con los siguientes datos:</p>
     
                         <div style="display:flex;flex-direction: column;gap:12px">
                           
