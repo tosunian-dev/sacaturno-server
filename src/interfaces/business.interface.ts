@@ -11,4 +11,5 @@ export interface IBusiness {
   _id?: string;
   email: string;
   subscription?: string;
+  slug: string;
 }

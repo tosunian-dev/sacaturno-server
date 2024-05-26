@@ -19,8 +19,8 @@ dayjs.extend(advanced);
 dayjs.extend(updateLocale)
 dayjs.updateLocale('en', {
   months: [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio",
-    "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
+    "agosto", "septiembre", "octubre", "noviembre", "diciembre"
   ]
 })
 dayjs.updateLocale('en', {
@@ -59,7 +59,7 @@ const SClientEmailBookedAppointment = async (
 ) => {
 
   const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
-    "D [de] MMMM [|] HH:mm [hs]"
+    "dddd D [de] MMMM [|] HH:mm [hs]"
   );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({
@@ -167,7 +167,7 @@ const SBusinessEmailBookedAppointment = async (
 ) => {
 
   const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
-    "D [de] MMMM [|] HH:mm [hs]"
+    "dddd D [de] MMMM [|] HH:mm [hs]"
   );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({
@@ -320,7 +320,7 @@ const SBusinessCancelledBooking = async (
 ) => {
   
   const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
-    "D [de] MMMM [|] HH:mm [hs]"
+    "dddd D [de] MMMM [|] HH:mm [hs]"
   );
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({

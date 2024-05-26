@@ -10,6 +10,7 @@ import {
   deleteService,
   getServicesByBusinessID,
   getServicesByOwnerID,
+  getBusinessBySlug,
 } from "../controllers/businessController";
 import { checkAuth } from "../middlewares/authMiddleware";
 import multerMiddleware from "../middlewares/multerMiddleware";
@@ -31,6 +32,8 @@ router.post(
 router.get("/business/search/:name", getBusinessByName);
 
 router.get("/business/getbyid/:ID", getBusinessByID);
+
+router.get("/business/getbyslug/:slug", getBusinessBySlug);
 
 router.get(
   "/business/service/get/:businessID",

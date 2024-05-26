@@ -10,7 +10,8 @@ import {
   SCreateService,
   SDeleteService,
   SGetServicesByBusinessID,
-  SGetServicesByOwnerID
+  SGetServicesByOwnerID,
+  SGetBusinessBySlug
 } from "../services/businessServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
@@ -130,6 +131,18 @@ const deleteService = async (req: Request, res: Response) => {
   }
 };
 
+const getBusinessBySlug = async (req: Request, res: Response) => {
+  try {
+    const servicesData = await SGetBusinessBySlug(req);
+    if (!servicesData) {
+      return res.send("SERVICES_NOT_FOUND");
+    }
+    res.send(servicesData);
+  } catch (error) {
+    handleError(res, "ERROR_GET_SERVICES");
+  }
+};
+
 export {
   createBusiness,
   getBusinessByName,
@@ -141,4 +154,5 @@ export {
   deleteService,
   getServicesByBusinessID,
   getServicesByOwnerID,
+  getBusinessBySlug
 };

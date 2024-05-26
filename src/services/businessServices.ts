@@ -41,16 +41,20 @@ const SGetBusinessByOwnerID = async ({ params }: Request) => {
 };
 
 const SEditBusinessData = async (businessData: IBusiness) => {
-  const editedBusiness = await BusinessModel.findByIdAndUpdate(
-    { _id: businessData._id },
-    businessData,
-    { new: true }
-  );
-  if (editedBusiness === null) {
-    return "BUSINESS_NOT_FOUND";
+  const slugExists = await BusinessModel.find({slug: businessData.slug})
+  if(slugExists.length === 0){
+    const editedBusiness = await BusinessModel.findByIdAndUpdate(
+      { _id: businessData._id },
+      businessData,
+      { new: true }
+    );
+    if (editedBusiness === null) {
+      return "BUSINESS_NOT_FOUND";
+    }
+      return editedBusiness;
+  } else {
+    return "ERROR_EDIT_SLUG_EXISTS"
   }
-
-  return editedBusiness;
 };
 
 const SUpdateBusinessImage = async (imageData: {
@@ -86,6 +90,12 @@ const SGetBusinessByID = async ({ params }: Request) => {
   const businessData = await BusinessModel.findOne({ _id: params.ID });
   return businessData;
 };
+
+const SGetBusinessBySlug = async ({ params }: Request) => {
+  const businessData = await BusinessModel.findOne({ slug: params.slug });
+  return businessData;
+};
+
 
 const SGetServicesByBusinessID = async ({ params }: Request) => {
   const servicesData = await ServiceModel.find({
@@ -123,4 +133,5 @@ export {
   SDeleteService,
   SGetServicesByBusinessID,
   SGetServicesByOwnerID,
+  SGetBusinessBySlug
 };
