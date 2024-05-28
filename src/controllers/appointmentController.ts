@@ -7,7 +7,8 @@ import {
     SGetAppointmentsByBusinessID, 
     SGetAppointmentsByClientID,
     SDeleteAppointment,
-    SCancelBooking
+    SCancelBooking,
+    SGetPublicAppsByBusinessID
 } from "../services/appointmentServices";
 
 const createAppointment = async ({body}:Request, res: Response) => {
@@ -77,6 +78,15 @@ const cancelBooking = async (req:Request, res: Response) => {
     }
 }
 
+const getPublicAppsByBusinessID = async (req:Request, res: Response) => {
+    try {
+        const appointmentBooked = await SGetPublicAppsByBusinessID(req)
+        res.send(appointmentBooked)
+    } catch (error) {
+        handleError(res, 'ERROR_GET_APPOINTMENT');        
+    }
+}
+
 export {
     createAppointment,
     bookAppointment,
@@ -84,7 +94,8 @@ export {
     getAppointmentsByBusinessID,
     getAppointmentsByClientID,
     deleteAppointment,
-    cancelBooking
+    cancelBooking,
+    getPublicAppsByBusinessID
 }
 
 

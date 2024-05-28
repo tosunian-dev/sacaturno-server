@@ -10,6 +10,7 @@ import utc from "dayjs/plugin/utc";
 import "dayjs/locale/es-mx";
 import timezone from "dayjs/plugin/timezone";
 import advanced from "dayjs/plugin/advancedFormat";
+
 interface IAppointmentWithEmail extends IAppointment {
   businessEmail: string;
 }
@@ -30,8 +31,6 @@ dayjs.updateLocale('en', {
 })
 
 const SCreateAppointment = async (appointmentData: IAppointment) => {
-  console.log(appointmentData);
-
   const appointment = await AppointmentModel.create(appointmentData);
   return appointment;
 };
@@ -81,7 +80,7 @@ const SClientEmailBookedAppointment = async (
             <tr style="width:100%">
               <td>
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody>
+                  <tbody style="margin: auto;">
                     <tr>
                       <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                     </tr>
@@ -108,10 +107,10 @@ const SClientEmailBookedAppointment = async (
                   <tbody>
                     <tr>
                       <td>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Hola ${appointmentData.name}!,</p>
+                        <p style="font-size:14px;line-height:1.5;margin:16px 0;">Hola ${appointmentData.name}!,</p>
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Reservaste un turno para el dia <b>${appointmentDate}</b> para el servicio de <b>${appointmentData.service}</b> en <b>${businessData.name}</b> con los siguientes datos:</p>
     
-                        <div style="display:flex;flex-direction: column;gap:12px">
+                        <div style="display:flex; flex-direction: column; gap:12px;">
                       
                           <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido: </b>
                           <span style="margin-bottom:10px;font-size:12px;">${appointmentData.name}</span>
@@ -189,7 +188,7 @@ const SBusinessEmailBookedAppointment = async (
             <tr style="width:100%">
               <td>
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody>
+                  <tbody style="margin: auto;">
                     <tr>
                       <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                     </tr>
@@ -219,7 +218,7 @@ const SBusinessEmailBookedAppointment = async (
     
                         <p style="font-size:14px;line-height:1.5;margin:16px 0;">Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:</p>
     
-                        <div style="display:flex;flex-direction: column;gap:12px">
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
                           
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
@@ -280,6 +279,15 @@ const SGetAppointmentsByBusinessID = async ({ params }: Request) => {
   });
   return appointment;
 };
+
+const SGetPublicAppsByBusinessID = async ({params}: Request) => {
+  const now = dayjs().format('YYYY/MM/DD')
+  const appointments = await AppointmentModel.find({
+    start: { $gte: new Date(now) },
+    businessID: params.businessID
+  });
+  return appointments;
+}
 
 const SGetAppointmentsByClientID = async ({ params }: Request) => {
   const appointment = await AppointmentModel.findOne({
@@ -435,4 +443,5 @@ export {
   SGetAppointmentByID,
   SDeleteAppointment,
   SCancelBooking,
+  SGetPublicAppsByBusinessID
 };

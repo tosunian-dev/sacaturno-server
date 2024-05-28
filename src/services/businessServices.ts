@@ -91,7 +91,7 @@ const SGetBusinessByID = async ({ params }: Request) => {
   return businessData;
 };
 
-const SGetBusinessBySlug = async ({ params }: Request) => {
+const SGetBusinessBySlug = async ({ params }: Request) => { 
   const businessData = await BusinessModel.findOne({ slug: params.slug });
   return businessData;
 };
