@@ -157,7 +157,6 @@ const SClientEmailBookedAppointment = async (
     return console.error({ error });
   }
 
-  console.log({ data });
 };
 
 const SBusinessEmailBookedAppointment = async (
@@ -270,7 +269,6 @@ const SBusinessEmailBookedAppointment = async (
     return console.error({ error });
   }
 
-  console.log({ data });
 };
 
 const SGetAppointmentsByBusinessID = async ({ params }: Request) => {
@@ -307,7 +305,6 @@ const SDeleteAppointment = async ({ params }: Request) => {
 };
 
 const SCancelBooking = async ({ body }: Request) => {
-  console.log(body);
   const appointment = await AppointmentModel.findByIdAndUpdate(
     body._id,
     {
@@ -432,7 +429,6 @@ const SBusinessCancelledBooking = async (
     return console.error({ error });
   }
 
-  console.log({ data });
 };
 
 export {

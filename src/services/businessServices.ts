@@ -27,8 +27,8 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     subscriptionType: "SC_FREE",
     paymentDate: paymentDate.toDate(),
     expiracyDate: expiracyDate.toDate(),
-    expiracyMonth: dayjs().month()+2,
-    expiracyDay: dayjs().date()
+    expiracyMonth: dayjs().month() + 2,
+    expiracyDay: dayjs().date(),
   };
   const subscriptionDetails = await SubscriptionModel.create(subDetails);
 
@@ -41,8 +41,9 @@ const SGetBusinessByOwnerID = async ({ params }: Request) => {
 };
 
 const SEditBusinessData = async (businessData: IBusiness) => {
-  const slugExists = await BusinessModel.find({slug: businessData.slug})
-  if(slugExists.length === 0){
+  const slugExists = await BusinessModel.find({ slug: businessData.slug });
+  
+  if (slugExists.length === 0 || slugExists[0]._id.toString() === businessData._id) {
     const editedBusiness = await BusinessModel.findByIdAndUpdate(
       { _id: businessData._id },
       businessData,
@@ -51,9 +52,9 @@ const SEditBusinessData = async (businessData: IBusiness) => {
     if (editedBusiness === null) {
       return "BUSINESS_NOT_FOUND";
     }
-      return editedBusiness;
+    return editedBusiness;
   } else {
-    return "ERROR_EDIT_SLUG_EXISTS"
+    return "ERROR_EDIT_SLUG_EXISTS";
   }
 };
 
@@ -91,11 +92,10 @@ const SGetBusinessByID = async ({ params }: Request) => {
   return businessData;
 };
 
-const SGetBusinessBySlug = async ({ params }: Request) => { 
+const SGetBusinessBySlug = async ({ params }: Request) => {
   const businessData = await BusinessModel.findOne({ slug: params.slug });
   return businessData;
 };
-
 
 const SGetServicesByBusinessID = async ({ params }: Request) => {
   const servicesData = await ServiceModel.find({
@@ -133,5 +133,5 @@ export {
   SDeleteService,
   SGetServicesByBusinessID,
   SGetServicesByOwnerID,
-  SGetBusinessBySlug
+  SGetBusinessBySlug,
 };
