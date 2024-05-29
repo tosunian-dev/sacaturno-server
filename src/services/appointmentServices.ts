@@ -110,7 +110,7 @@ const SClientEmailBookedAppointment = async (
                         <p style="font-size:14px;line-height:1.5;margin:16px 0;">Hola ${appointmentData.name}!,</p>
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Reservaste un turno para el dia <b>${appointmentDate}</b> para el servicio de <b>${appointmentData.service}</b> en <b>${businessData.name}</b> con los siguientes datos:</p>
     
-                        <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div style="display:inline-grid;">
                       
                           <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido: </b>
                           <span style="margin-bottom:10px;font-size:12px;">${appointmentData.name}</span>
@@ -217,7 +217,7 @@ const SBusinessEmailBookedAppointment = async (
     
                         <p style="font-size:14px;line-height:1.5;margin:16px 0;">Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:</p>
     
-                        <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div style="display:inline-grid;">
                           
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
@@ -347,7 +347,7 @@ const SBusinessCancelledBooking = async (
             <tr style="width:100%">
               <td>
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody>
+                  <tbody style="margin: auto;">
                     <tr>
                       <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
                     </tr>
@@ -377,7 +377,7 @@ const SBusinessCancelledBooking = async (
     
                         <p style="font-size:14px;line-height:1.5;margin:16px 0;"Tu cliente ha cancelado una reserva de turno en tu empresa</b>Tu cliente canceló su reserva con los siguientes datos:</p>
     
-                        <div style="display:flex;flex-direction: column;gap:12px">
+                        <div style="display:inline-grid;gap:12px">
                           
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
