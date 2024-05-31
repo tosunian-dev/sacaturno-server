@@ -6,7 +6,6 @@ import { jwtGen, verifyToken } from "../utils/jwtGen.handle";
 import fs from "fs";
 import { Resend } from "resend";
 import { JwtPayload } from "jsonwebtoken";
-import { string } from "zod";
 
 const SCreateUser = async (userData: IUser) => {
   const userExists = await UserModel.find({ email: userData.email });
