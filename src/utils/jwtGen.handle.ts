@@ -20,7 +20,9 @@ const verifyToken = (token: string) => {
   
 }
 
+
+
 export {
     jwtGen,
-    verifyToken
+    verifyToken,
 }

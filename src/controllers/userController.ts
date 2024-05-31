@@ -5,10 +5,9 @@ import {
     SEditUser, 
     SGetUser,
     SLoginUser,
-    SUpdateUserProfileImage
+    SUpdateUserProfileImage,
+    SVerifyConfirmToken
 } from '../services/userServices';
-import UserModel from '../models/userModel';
-import { encrypt, verify } from "../utils/pwEncrypt.handle";
 import { serialize } from 'cookie';
 import fs from 'fs'
 import path from "path";
@@ -41,6 +40,15 @@ const loginUser = async ({body}: Request, res: Response) => {
         res.send({response_data});
     } catch (error) {
         handleError(res, 'ERROR_LOGIN');
+    }
+}
+
+const verifyConfirmToken = async (req: Request, res: Response) => {
+    try {
+        const response_data = await SVerifyConfirmToken(req)
+        res.send(response_data)
+    } catch (error) {
+        handleError(res, 'ERROR_USER_VERIFICATION');
     }
 }
 
@@ -104,11 +112,14 @@ const getProfilePic = async (req: Request, res: Response) => {
 }
 
 
+
+
 export {
     getUser,
     createUser,
     editUser,
     updateUserImage,
     loginUser,
-    getProfilePic
+    getProfilePic,
+    verifyConfirmToken
 }

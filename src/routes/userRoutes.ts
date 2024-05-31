@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { createUser, editUser, getUser, updateUserImage, loginUser, getProfilePic } from "../controllers/userController"
+import { createUser, editUser, getUser, updateUserImage, loginUser, getProfilePic, verifyConfirmToken } from "../controllers/userController"
 import multerMiddleware from "../middlewares/multerMiddleware"
 import { checkAuth } from "../middlewares/authMiddleware"
 const router = Router()
@@ -10,5 +10,6 @@ router.put('/user/editprofile', checkAuth, editUser)
 router.get('/user/get/:ID', checkAuth, getUser)
 router.post('/user/updateimage', checkAuth, multerMiddleware.single('profile_image'), updateUserImage)
 router.get('/user/getprofilepic/:img', getProfilePic)
+router.post('/user/verify/:token', verifyConfirmToken)
 
 export default router

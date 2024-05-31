@@ -24,6 +24,11 @@ const UserSchema = new Schema<IUser>(
       required: false,
       default: "user.png",
     },
+    verified: {
+      type: Boolean,
+      default: false,
+      required: false,
+    },
   },
   {
     timestamps: true,
