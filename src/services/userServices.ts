@@ -160,6 +160,9 @@ const SLoginUser = async ({
   if (!userExists) {
     return "USER_NOT_FOUND";
   }
+  if(userExists.verified === false){
+    return "USER_NOT_VERIFIED"
+  }
   const userID = userExists._id.toString();
   const pwHashed = userExists.password;
   const isPasswordCorrect = await verify(password, pwHashed);
@@ -178,7 +181,6 @@ const SUpdateUserProfileImage = async (imageData: {
   path: string;
   userId: string;
 }) => {
-  console.log(imageData.path, imageData.userId);
 
   const updatedUser = await UserModel.findByIdAndUpdate(
     imageData.userId,
