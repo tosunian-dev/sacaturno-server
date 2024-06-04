@@ -11,7 +11,8 @@ import {
   SDeleteService,
   SGetServicesByBusinessID,
   SGetServicesByOwnerID,
-  SGetBusinessBySlug
+  SGetBusinessBySlug,
+  SGetBusinessByEmail
 } from "../services/businessServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
@@ -143,6 +144,18 @@ const getBusinessBySlug = async (req: Request, res: Response) => {
   }
 };
 
+const getBusinessByEmail = async (req: Request, res: Response) => {
+  try {
+    const servicesData = await SGetBusinessByEmail(req);
+    if (!servicesData) {
+      return res.send("BUSINESS_NOT_FOUND");
+    }
+    res.send(servicesData);
+  } catch (error) {
+    handleError(res, "ERROR_GET_BUSINESS");
+  }
+};
+
 export {
   createBusiness,
   getBusinessByName,
@@ -154,5 +167,6 @@ export {
   deleteService,
   getServicesByBusinessID,
   getServicesByOwnerID,
-  getBusinessBySlug
+  getBusinessBySlug,
+  getBusinessByEmail
 };

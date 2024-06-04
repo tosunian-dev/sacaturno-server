@@ -97,6 +97,11 @@ const SGetBusinessBySlug = async ({ params }: Request) => {
   return businessData;
 };
 
+const SGetBusinessByEmail = async ({ params }: Request) => {
+  const businessData = await BusinessModel.findOne({ email: params.email });
+  return businessData;
+};
+
 const SGetServicesByBusinessID = async ({ params }: Request) => {
   const servicesData = await ServiceModel.find({
     businessID: params.businessID,
@@ -108,6 +113,7 @@ const SGetServicesByOwnerID = async ({ params }: Request) => {
   const servicesData = await ServiceModel.find({ ownerID: params.ownerID });
   return servicesData;
 };
+
 
 const SCreateService = async (serviceData: IService) => {
   const serviceExists = await ServiceModel.find({ ownerID: serviceData.name });
@@ -134,4 +140,5 @@ export {
   SGetServicesByBusinessID,
   SGetServicesByOwnerID,
   SGetBusinessBySlug,
+  SGetBusinessByEmail
 };

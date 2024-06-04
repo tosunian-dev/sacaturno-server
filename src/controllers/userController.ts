@@ -6,7 +6,9 @@ import {
     SGetUser,
     SLoginUser,
     SUpdateUserProfileImage,
-    SVerifyConfirmToken
+    SVerifyConfirmToken,
+    SSendPasswordRecoveryEmail,
+    SUpdatePasswordOnRecovery
 } from '../services/userServices';
 import { serialize } from 'cookie';
 import fs from 'fs'
@@ -111,7 +113,23 @@ const getProfilePic = async (req: Request, res: Response) => {
 
 }
 
+const sendPasswordRecoveryEmail = async (req: Request, res: Response) => {
+    try {
+        const response_data = await SSendPasswordRecoveryEmail(req)
+        res.send(response_data)
+    } catch (error) {
+        handleError(res, 'ERROR_SEND_RECOVERY_EMAIL')
+    }
+}
 
+const updatePasswordOnRecovery = async (req: Request, res: Response) => {
+    try {
+        const response_data = await SUpdatePasswordOnRecovery(req)
+        res.send(response_data)
+    } catch (error) {
+        handleError(res, 'ERROR_SEND_RECOVERY_EMAIL')
+    }
+}
 
 
 export {
@@ -121,5 +139,7 @@ export {
     updateUserImage,
     loginUser,
     getProfilePic,
-    verifyConfirmToken
+    verifyConfirmToken,
+    sendPasswordRecoveryEmail,
+    updatePasswordOnRecovery
 }

@@ -11,6 +11,7 @@ import {
   getServicesByBusinessID,
   getServicesByOwnerID,
   getBusinessBySlug,
+  getBusinessByEmail
 } from "../controllers/businessController";
 import { checkAuth } from "../middlewares/authMiddleware";
 import multerMiddleware from "../middlewares/multerMiddleware";
@@ -34,6 +35,8 @@ router.get("/business/search/:name", getBusinessByName);
 router.get("/business/getbyid/:ID", getBusinessByID);
 
 router.get("/business/getbyslug/:slug", getBusinessBySlug);
+
+router.get("/business/getbyemail/:email", getBusinessByEmail);
 
 router.get(
   "/business/service/get/:businessID",
