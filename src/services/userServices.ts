@@ -254,7 +254,7 @@ const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
                           <p style="font-size:15px;line-height:1.5;margin:16px 0;font-weight:600;">Recuperar cuenta</p>
                           <p style="font-size:14px;line-height:1.5;margin:16px 0;">Para restablecer tu contraseña debes <b>hacer click en el botón debajo</b> Luego serás redireccionado a tu panel donde podrás configurar tu nueva contraseña.</p>
                           <div style="width:100%;height:fit-content;display:flex;justify-content:center;margin-top:2.4rem;">
-                            <a href="http://localhost:3000/login/recovery/set/${token}" target="_blank"  style="margin:auto;background-color: rgb(221, 73, 36);border-radius: 8px;color: rgb(255, 255, 255);display: inline-block;font-size: 12px;font-weight: bold;line-height: 40px;padding: 0px 16px;text-align: center;text-transform: uppercase;text-decoration: none;width: auto;">Restablecer contraseña</a>
+                            <a href="https://sacaturno.com.ar/login/recovery/set/${token}" target="_blank"  style="margin:auto;background-color: rgb(221, 73, 36);border-radius: 8px;color: rgb(255, 255, 255);display: inline-block;font-size: 12px;font-weight: bold;line-height: 40px;padding: 0px 16px;text-align: center;text-transform: uppercase;text-decoration: none;width: auto;">Restablecer contraseña</a>
                           </div>
                         </td>
                       </tr>

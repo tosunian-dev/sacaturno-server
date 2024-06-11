@@ -17,18 +17,34 @@ interface IAppointmentWithEmail extends IAppointment {
 dayjs.extend(timezone);
 dayjs.extend(utc);
 dayjs.extend(advanced);
-dayjs.extend(updateLocale)
-dayjs.updateLocale('en', {
+dayjs.extend(updateLocale);
+dayjs.updateLocale("en", {
   months: [
-    "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio",
-    "agosto", "septiembre", "octubre", "noviembre", "diciembre"
-  ]
-})
-dayjs.updateLocale('en', {
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+  ],
+});
+dayjs.updateLocale("en", {
   weekdays: [
-    "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"
-  ]
-})
+    "Domingo",
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+  ],
+});
 
 const SCreateAppointment = async (appointmentData: IAppointment) => {
   const appointment = await AppointmentModel.create(appointmentData);
@@ -56,10 +72,9 @@ const SClientEmailBookedAppointment = async (
   appointmentData: IAppointment,
   businessData: IBusiness
 ) => {
-
-  const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
-    "dddd D [de] MMMM [|] HH:mm [hs]"
-  );
+  const appointmentDate = dayjs(appointmentData.start)
+    .tz("America/Argentina/Buenos_Aires")
+    .format("dddd D [de] MMMM [|] HH:mm [hs]");
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
@@ -156,17 +171,15 @@ const SClientEmailBookedAppointment = async (
   if (error) {
     return console.error({ error });
   }
-
 };
 
 const SBusinessEmailBookedAppointment = async (
   appointmentData: IAppointment,
   businessData: IBusiness
 ) => {
-
-  const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
-    "dddd D [de] MMMM [|] HH:mm [hs]"
-  );
+  const appointmentDate = dayjs(appointmentData.start)
+    .tz("America/Argentina/Buenos_Aires")
+    .format("dddd D [de] MMMM [|] HH:mm [hs]");
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
@@ -268,7 +281,6 @@ const SBusinessEmailBookedAppointment = async (
   if (error) {
     return console.error({ error });
   }
-
 };
 
 const SGetAppointmentsByBusinessID = async ({ params }: Request) => {
@@ -278,14 +290,27 @@ const SGetAppointmentsByBusinessID = async ({ params }: Request) => {
   return appointment;
 };
 
-const SGetPublicAppsByBusinessID = async ({params}: Request) => {
-  const now = dayjs().format('YYYY/MM/DD')
+const SGetPublicAppsByBusinessID = async ({ params }: Request) => {
+  const now = dayjs().format("YYYY/MM/DD");
   const appointments = await AppointmentModel.find({
     start: { $gte: new Date(now) },
-    businessID: params.businessID
+    businessID: params.businessID,
   });
   return appointments;
-}
+};
+
+const SGetTodayAppointmentsByBusinessID = async ({ params }: Request) => {
+  const now = dayjs().toDate();
+  console.log(now);
+  const end = dayjs().endOf('day').toDate()
+  console.log(end);
+  
+  const appointments = await AppointmentModel.find({
+    start: { $gte: now, $lt: end},
+    businessID: params.businessID,
+  });
+  return appointments;
+};
 
 const SGetAppointmentsByClientID = async ({ params }: Request) => {
   const appointment = await AppointmentModel.findOne({
@@ -316,17 +341,16 @@ const SCancelBooking = async ({ body }: Request) => {
     },
     { new: false }
   );
-  SBusinessCancelledBooking(body)
+  SBusinessCancelledBooking(body);
   return appointment;
 };
 
 const SBusinessCancelledBooking = async (
   appointmentData: IAppointmentWithEmail
 ) => {
-  
-  const appointmentDate = dayjs(appointmentData.start).tz("America/Argentina/Buenos_Aires").format(
-    "dddd D [de] MMMM [|] HH:mm [hs]"
-  );
+  const appointmentDate = dayjs(appointmentData.start)
+    .tz("America/Argentina/Buenos_Aires")
+    .format("dddd D [de] MMMM [|] HH:mm [hs]");
   const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
   const { data, error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
@@ -428,7 +452,6 @@ const SBusinessCancelledBooking = async (
   if (error) {
     return console.error({ error });
   }
-
 };
 
 export {
@@ -439,5 +462,6 @@ export {
   SGetAppointmentByID,
   SDeleteAppointment,
   SCancelBooking,
-  SGetPublicAppsByBusinessID
+  SGetPublicAppsByBusinessID,
+  SGetTodayAppointmentsByBusinessID,
 };
