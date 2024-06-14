@@ -9,7 +9,8 @@ import {
     SDeleteAppointment,
     SCancelBooking,
     SGetPublicAppsByBusinessID,
-    SGetTodayAppointmentsByBusinessID
+    SGetTodayAppointmentsByBusinessID,
+    SCreateAllDayAppointments
 } from "../services/appointmentServices";
 
 const createAppointment = async ({body}:Request, res: Response) => {
@@ -97,6 +98,16 @@ const getTodayAppointmentsByBusinessID = async (req:Request, res: Response) => {
     }
 }
 
+const createAllDayAppointments = async ({body}:Request, res: Response) => {
+    try {
+        const appointmentData = await SCreateAllDayAppointments(body)
+        res.send({appointmentData, msg: 'APPOINTMENT_CREATED'})
+    } catch (error) {
+        handleError(res, 'ERROR_APPOINTMENT_CREATION');
+
+    }
+}
+
 export {
     createAppointment,
     bookAppointment,
@@ -106,7 +117,8 @@ export {
     deleteAppointment,
     cancelBooking,
     getPublicAppsByBusinessID,
-    getTodayAppointmentsByBusinessID
+    getTodayAppointmentsByBusinessID,
+    createAllDayAppointments
 }
 
 

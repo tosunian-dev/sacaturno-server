@@ -51,6 +51,13 @@ const SCreateAppointment = async (appointmentData: IAppointment) => {
   return appointment;
 };
 
+
+const SCreateAllDayAppointments = async (appointments: IAppointment[]) => {
+  const appointment = await AppointmentModel.insertMany(appointments);
+  return appointment;
+};
+
+
 const SBookAppointment = async (data: IAppointment) => {
   const appointmentData = await AppointmentModel.findOneAndUpdate(
     { _id: data._id },
@@ -301,12 +308,9 @@ const SGetPublicAppsByBusinessID = async ({ params }: Request) => {
 
 const SGetTodayAppointmentsByBusinessID = async ({ params }: Request) => {
   const now = dayjs().toDate();
-  console.log(now);
-  const end = dayjs().endOf('day').toDate()
-  console.log(end);
-  
+  const end = dayjs().endOf('date').toDate()  
   const appointments = await AppointmentModel.find({
-    start: { $gte: now, $lt: end},
+    start: { $gte: now, $lte: end},
     businessID: params.businessID,
   });
   return appointments;
@@ -464,4 +468,5 @@ export {
   SCancelBooking,
   SGetPublicAppsByBusinessID,
   SGetTodayAppointmentsByBusinessID,
+  SCreateAllDayAppointments
 };

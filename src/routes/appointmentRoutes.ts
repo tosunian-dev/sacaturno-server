@@ -8,13 +8,15 @@ import {
   deleteAppointment,
   cancelBooking,
   getPublicAppsByBusinessID,
-  getTodayAppointmentsByBusinessID
+  getTodayAppointmentsByBusinessID,
+  createAllDayAppointments
 } from "../controllers/appointmentController";
 import { checkAuth } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post("/appointment/create", checkAuth, createAppointment);
+router.post("/appointment/create/day", checkAuth, createAllDayAppointments);
 /** GET APPOINTMENTS BY BUSINESS ID */
 router.get("/appointment/get/:businessID", getAppointmentsByBusinessID);
 /** GET USER'S BOOKED APPOINTMENTS */
