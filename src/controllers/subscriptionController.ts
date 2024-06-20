@@ -58,14 +58,16 @@ const paymentWebhook = async (req: Request, res: Response) => {
     })
     .then(async (response) => {
       const { data } = response;
-      console.log(data.metadata);
-      console.log('businessID',data.metadata.businessID);
-      console.log('business_id',data.metadata.business_id);
+      //console.log(data.metadata);
+      //console.log('businessID',data.metadata.businessID);
+      //console.log('business_id',data.metadata.business_id);
       
       const paymentDate = dayjs();
       const expiracyDate = paymentDate.add(1, "month");
-      if (data.status == "approved") {
+      if (data.status === "approved") {
         const updatedSubscription = {
+          userID: data.metadata.owner_id,
+          email: data.metadata.email,
           businessID: data.metadata.business_id,
           subscriptionType: "SC_FULL",
           paymentDate: paymentDate.toDate(),
@@ -73,7 +75,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
         };
        
         await axios.put(`https://sacaturno-server-production.up.railway.app/api/subscription/update`, updatedSubscription).then((data) => {
-          console.log('updatesubresponse',data)
+          console.log('updatesubresponse',data.data)
         })
       }
     })

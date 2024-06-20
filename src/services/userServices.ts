@@ -181,13 +181,13 @@ const SLoginUser = async ({
 const SUpdateUserProfileImage = async (imageData: {
   path: string;
   userId: string;
-}) => {
-  const updatedUser = await UserModel.findByIdAndUpdate(
-    imageData.userId,
+  file_name: string;
+}) => {  
+  const updatedUser = await UserModel.findOneAndUpdate(
+    {_id: imageData.userId},
     {
-      profileImage: imageData.path,
+      profileImage: imageData.file_name,
     },
-    { new: true }
   );
   if (updatedUser?.profileImage !== "user.png") {
     fs.unlink(`profile_images\\${updatedUser?.profileImage}`, async (error) => {

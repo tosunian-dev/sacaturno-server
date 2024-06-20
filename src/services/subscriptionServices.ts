@@ -1,8 +1,9 @@
 import { Request, Response } from "express";
 import SubscriptionModel from "../models/subscriptionModel";
 import { MercadoPagoConfig, Preference } from "mercadopago";
-import mercadopago from "mercadopago";
 import dayjs from "dayjs";
+import PlanPaymentModel from "../models/planPaymentModel";
+import { IPlanPayment } from '../interfaces/planPayment.interface';
 
 interface IPreference {
   items: {
@@ -83,6 +84,20 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
     );
     console.log("updatedSub", updated);
     if (updated !== null) {
+      try {
+        const planPayment = await PlanPaymentModel.create({
+          price: process.env.FULL_PLAN_PRICE,
+          businessID: body.businessID,
+          userID: updated.ownerID,
+          paymentDate: body.paymentDate,
+          subscriptionType: body.subscriptionType,
+          email: body.email
+        })
+        console.log('planPayment', planPayment);
+                
+      } catch (error) {
+        return "ERROR_CREATE_PLAN_PAYMENT";
+      }
       return updated;
     }
   } catch (error) {

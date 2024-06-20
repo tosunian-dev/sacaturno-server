@@ -84,8 +84,7 @@ const getUser = async (req: Request, res: Response) => {
 const updateUserImage = async (req: RequestExtended, res: Response) => {
     try {
         const {user, file} = req
-        const path: string = `${file?.path}`.split('\\')[4]
-        
+        const path: string = `${file?.path}`.split('\\')[4]        
         const data = {
             file_name: `${file?.filename}`,
             path,

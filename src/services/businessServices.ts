@@ -7,6 +7,7 @@ import ServiceModel from "../models/serviceModel";
 import dayjs from "dayjs";
 import ISubscription from "../interfaces/subscription.interface";
 import SubscriptionModel from "../models/subscriptionModel";
+import PlanPaymentModel from "../models/planPaymentModel";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
   // CHECK IF BUSINESS EXISTS
@@ -31,7 +32,15 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     expiracyDay: dayjs().date(),
   };
   const subscriptionDetails = await SubscriptionModel.create(subDetails);
-
+  const planPayment = await PlanPaymentModel.create({
+    price: 0,
+    businessID: createdBusiness._id,
+    userID: businessData.ownerID,
+    paymentDate: paymentDate.toDate(),
+    subscriptionType: 'SC_FREE',
+    email: createdBusiness.email
+  })
+  console.log('planPayment', planPayment);
   return { createdBusiness, subscriptionDetails };
 };
 
@@ -66,7 +75,6 @@ const SUpdateBusinessImage = async (imageData: {
   const updatedBusiness = await BusinessModel.findOneAndUpdate(
     { ownerID: imageData.userId },
     { image: imageData.file_name },
-    { new: true }
   );
   if (updatedBusiness?.image !== "user.png") {
     fs.unlink(`profile_images\\${updatedBusiness?.image}`, async (error) => {
