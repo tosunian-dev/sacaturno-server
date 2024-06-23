@@ -3,4 +3,6 @@ export interface IService {
   businessID: string;
   name: string;
   ownerID?: string;
+  price: number;
+  description: string;
 }

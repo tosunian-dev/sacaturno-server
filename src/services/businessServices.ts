@@ -37,10 +37,10 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     businessID: createdBusiness._id,
     userID: businessData.ownerID,
     paymentDate: paymentDate.toDate(),
-    subscriptionType: 'SC_FREE',
-    email: createdBusiness.email
-  })
-  console.log('planPayment', planPayment);
+    subscriptionType: "SC_FREE",
+    email: createdBusiness.email,
+  });
+  console.log("planPayment", planPayment);
   return { createdBusiness, subscriptionDetails };
 };
 
@@ -51,8 +51,11 @@ const SGetBusinessByOwnerID = async ({ params }: Request) => {
 
 const SEditBusinessData = async (businessData: IBusiness) => {
   const slugExists = await BusinessModel.find({ slug: businessData.slug });
-  
-  if (slugExists.length === 0 || slugExists[0]._id.toString() === businessData._id) {
+
+  if (
+    slugExists.length === 0 ||
+    slugExists[0]._id.toString() === businessData._id
+  ) {
     const editedBusiness = await BusinessModel.findByIdAndUpdate(
       { _id: businessData._id },
       businessData,
@@ -74,7 +77,7 @@ const SUpdateBusinessImage = async (imageData: {
 }) => {
   const updatedBusiness = await BusinessModel.findOneAndUpdate(
     { ownerID: imageData.userId },
-    { image: imageData.file_name },
+    { image: imageData.file_name }
   );
   if (updatedBusiness?.image !== "user.png") {
     fs.unlink(`profile_images\\${updatedBusiness?.image}`, async (error) => {
@@ -122,7 +125,6 @@ const SGetServicesByOwnerID = async ({ params }: Request) => {
   return servicesData;
 };
 
-
 const SCreateService = async (serviceData: IService) => {
   const serviceExists = await ServiceModel.find({ ownerID: serviceData.name });
   if (serviceExists.length > 0) {
@@ -134,6 +136,23 @@ const SCreateService = async (serviceData: IService) => {
 
 const SDeleteService = async ({ params }: Request) => {
   const serviceData = await ServiceModel.findByIdAndDelete(params.serviceID);
+};
+
+const SEditServiceData = async (serviceData: {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+}) => {
+  const editedService = await ServiceModel.findByIdAndUpdate(
+    { _id: serviceData.id },
+    serviceData,
+    { new: true }
+  );
+  if (editedService) return editedService;
+  if (editedService === null) {
+    return "SERVICE_NOT_FOUND";
+  }
 };
 
 export {
@@ -148,5 +167,6 @@ export {
   SGetServicesByBusinessID,
   SGetServicesByOwnerID,
   SGetBusinessBySlug,
-  SGetBusinessByEmail
+  SGetBusinessByEmail,
+  SEditServiceData,
 };

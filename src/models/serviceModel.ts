@@ -16,6 +16,14 @@ const ServiceSchema = new Schema<IService>(
             type: String,
             required: true
         },
+        description: {
+            type: String,
+            required: false
+        },
+        price: {
+            type: Number,
+            required: true
+        }
     },
     {
         timestamps: true,

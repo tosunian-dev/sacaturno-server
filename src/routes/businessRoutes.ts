@@ -11,7 +11,8 @@ import {
   getServicesByBusinessID,
   getServicesByOwnerID,
   getBusinessBySlug,
-  getBusinessByEmail
+  getBusinessByEmail,
+  editService
 } from "../controllers/businessController";
 import { checkAuth } from "../middlewares/authMiddleware";
 import multerMiddleware from "../middlewares/multerMiddleware";
@@ -51,6 +52,8 @@ router.get(
 );
 
 router.post("/business/service/create", checkAuth, createService);
+
+router.put("/business/service/edit", checkAuth, editService);
 
 router.delete("/business/service/delete/:serviceID", checkAuth, deleteService);
 

@@ -12,7 +12,8 @@ import {
   SGetServicesByBusinessID,
   SGetServicesByOwnerID,
   SGetBusinessBySlug,
-  SGetBusinessByEmail
+  SGetBusinessByEmail,
+  SEditServiceData
 } from "../services/businessServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
@@ -156,6 +157,18 @@ const getBusinessByEmail = async (req: Request, res: Response) => {
   }
 };
 
+const editService = async ({ body }: Request, res: Response) => {
+  try {
+    const editedService = await SEditServiceData(body);
+    if (editedService === "SERVICE_NOT_FOUND") {
+      return res.send({ msg: "SERVICE_NOT_FOUND" });
+    }
+    res.send({ editedService, msg: "SERVICE_EDITED" });
+  } catch (error) {
+    handleError(res, "ERROR_SERVICE_EDIT");
+  }
+};
+
 export {
   createBusiness,
   getBusinessByName,
@@ -168,5 +181,6 @@ export {
   getServicesByBusinessID,
   getServicesByOwnerID,
   getBusinessBySlug,
-  getBusinessByEmail
+  getBusinessByEmail,
+  editService
 };
