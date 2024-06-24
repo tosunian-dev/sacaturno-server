@@ -61,6 +61,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
       //console.log(data.metadata);
       //console.log('businessID',data.metadata.businessID);
       //console.log('business_id',data.metadata.business_id);
+      console.log('STATUS WEBHOOK', data.status);
       
       const paymentDate = dayjs();
       const expiracyDate = paymentDate.add(1, "month");

@@ -3,7 +3,7 @@ import SubscriptionModel from "../models/subscriptionModel";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import dayjs from "dayjs";
 import PlanPaymentModel from "../models/planPaymentModel";
-import { IPlanPayment } from '../interfaces/planPayment.interface';
+import { IPlanPayment } from "../interfaces/planPayment.interface";
 
 interface IPreference {
   items: {
@@ -77,29 +77,35 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
         paymentDate: body.paymentDate,
         expiracyDate: body.expiracyDate,
         subscriptionType: body.subscriptionType,
-        expiracyMonth: dayjs().month()+2,
-        expiracyDay: dayjs().date()
+        expiracyMonth: dayjs().month() + 2,
+        expiracyDay: dayjs().date(),
       },
       { new: true }
     );
     console.log("updatedSub", updated);
-    if (updated !== null) {
-      try {
+
+    try {
+      const now = dayjs().toDate();
+      const end = dayjs().endOf('date').toDate() 
+      const repeatedPlanPayment = await PlanPaymentModel.find({
+        paymentDate: {$gte: now, $lte: end},
+        businessID: body.businessID
+      });
+      if (repeatedPlanPayment.length === 0) {
         const planPayment = await PlanPaymentModel.create({
           price: process.env.FULL_PLAN_PRICE,
           businessID: body.businessID,
-          userID: updated.ownerID,
+          userID: updated?.ownerID,
           paymentDate: body.paymentDate,
           subscriptionType: body.subscriptionType,
-          email: body.email
-        })
-        console.log('planPayment', planPayment);
-                
-      } catch (error) {
-        return "ERROR_CREATE_PLAN_PAYMENT";
+          email: body.email,
+        });
+        return planPayment;
       }
-      return updated;
+    } catch (error) {
+      return "ERROR_CREATE_PLAN_PAYMENT";
     }
+    return updated;
   } catch (error) {
     return "ERROR_UPDATE_SUBSCRIPTION_TYPE";
   }
