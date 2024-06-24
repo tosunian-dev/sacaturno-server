@@ -48,6 +48,8 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
 
 const paymentWebhook = async (req: Request, res: Response) => {
   const paymentInfo = req.body;
+  console.log(paymentInfo.data);
+  
   // GET PAYMENT INFO BY ID //
   axios
     .get("https://api.mercadopago.com/v1/payments/" + paymentInfo.data.id, {
