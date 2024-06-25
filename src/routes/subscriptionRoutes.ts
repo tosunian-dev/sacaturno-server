@@ -4,7 +4,8 @@ import {
   getSubscriptionByOwnerID,
   createMercadoPagoPreference,
   paymentWebhook,
-  updateSubscriptionPlan
+  updateSubscriptionPlan,
+  getAllPayments
 } from "../controllers/subscriptionController";
 import { checkAuth } from "../middlewares/authMiddleware";
 const router = Router();
@@ -31,5 +32,9 @@ router.put(
   "/subscription/update",
   updateSubscriptionPlan
 );
-
+router.get(
+  "/subscription/payments/get/all/:userID",
+  checkAuth,
+  getAllPayments
+)
 export default router;

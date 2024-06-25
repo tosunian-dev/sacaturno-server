@@ -6,4 +6,5 @@ export interface IUser {
     _id?: string,
     profileImage?: string,
     verified?: boolean,
+    birthdate: Date
 }

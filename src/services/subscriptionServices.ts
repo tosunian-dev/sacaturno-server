@@ -111,9 +111,19 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
   }
 };
 
+const SGetAllPayments = async ({params}:Request) => {  
+  try {
+    const payments = await PlanPaymentModel.find({userID: params.userID})
+    return payments;
+  } catch (error) {
+    return 'ERROR_GET_PAYMENTS'
+  }
+}
+
 export {
   SGetSubscriptionByOwnerID,
   SGetSubscriptionByBusinessID,
   SCreateMercadoPagoPreference,
   SUpdateSubscriptionPlan,
+  SGetAllPayments
 };

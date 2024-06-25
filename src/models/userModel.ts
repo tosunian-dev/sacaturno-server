@@ -29,6 +29,10 @@ const UserSchema = new Schema<IUser>(
       default: false,
       required: false,
     },
+    birthdate: {
+      type: Date,
+      required: false
+    }
   },
   {
     timestamps: true,

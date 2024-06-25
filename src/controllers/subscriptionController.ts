@@ -3,7 +3,8 @@ import {
   SGetSubscriptionByOwnerID,
   SGetSubscriptionByBusinessID,
   SCreateMercadoPagoPreference,
-  SUpdateSubscriptionPlan
+  SUpdateSubscriptionPlan,
+  SGetAllPayments
 } from "../services/subscriptionServices";
 import { handleError } from "../utils/error.handle";
 import { Request, Response } from "express";
@@ -48,7 +49,7 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
 
 const paymentWebhook = async (req: Request, res: Response) => {
   const paymentInfo = req.body;
-  console.log(paymentInfo.data);
+  console.log(paymentInfo);
   
   // GET PAYMENT INFO BY ID //
   axios
@@ -96,10 +97,20 @@ const updateSubscriptionPlan = async (req:Request, res: Response) => {
   }
 }
 
+const getAllPayments = async (req:Request, res: Response) => {
+  try {
+    const payments = await SGetAllPayments(req)
+    return res.send(payments);
+  } catch (error) {
+    handleError(res, "ERROR_UPDATE_SUBSCRIPTION");
+  }
+}
+
 export {
   getSubscriptionByOwnerID,
   getSubscriptionByBusinessID,
   createMercadoPagoPreference,
   paymentWebhook,
-  updateSubscriptionPlan
+  updateSubscriptionPlan,
+  getAllPayments
 };
