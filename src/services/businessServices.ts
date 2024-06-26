@@ -8,6 +8,7 @@ import dayjs from "dayjs";
 import ISubscription from "../interfaces/subscription.interface";
 import SubscriptionModel from "../models/subscriptionModel";
 import PlanPaymentModel from "../models/planPaymentModel";
+import { IPlanPayment } from "../interfaces/planPayment.interface";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
   // CHECK IF BUSINESS EXISTS
@@ -32,7 +33,7 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     expiracyDay: dayjs().date(),
   };
   const subscriptionDetails = await SubscriptionModel.create(subDetails);
-  const planPayment = await PlanPaymentModel.create({
+  const planPayment: IPlanPayment = await PlanPaymentModel.create({
     price: 0,
     businessID: createdBusiness._id,
     userID: businessData.ownerID,

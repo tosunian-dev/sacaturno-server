@@ -83,15 +83,7 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
       { new: true }
     );
     console.log("updatedSub", updated);
-
     try {
-      const now = dayjs().toDate();
-      const end = dayjs().endOf('date').toDate() 
-      const repeatedPlanPayment = await PlanPaymentModel.find({
-        paymentDate: {$gte: now, $lte: end},
-        businessID: body.businessID
-      });
-      if (repeatedPlanPayment.length === 0) {
         const planPayment = await PlanPaymentModel.create({
           price: process.env.FULL_PLAN_PRICE,
           businessID: body.businessID,
@@ -99,13 +91,12 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
           paymentDate: body.paymentDate,
           subscriptionType: body.subscriptionType,
           email: body.email,
+          mpPaymentID: body.mpPaymentID
         });
         return planPayment;
-      }
     } catch (error) {
       return "ERROR_CREATE_PLAN_PAYMENT";
     }
-    return updated;
   } catch (error) {
     return "ERROR_UPDATE_SUBSCRIPTION_TYPE";
   }

@@ -82,6 +82,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
             subscriptionType: "SC_FULL",
             paymentDate: paymentDate.toDate(),
             expiracyDate: expiracyDate.toDate(),
+            mpPaymentID: paymentInfo.data.id,
           };
 
           await axios
@@ -95,7 +96,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
         }
       })
       .catch((error: any) => {
-        console.log('error at paymentwebhook get info', error);
+        console.log("error at paymentwebhook get info", error);
       });
   } catch (error) {}
 };
