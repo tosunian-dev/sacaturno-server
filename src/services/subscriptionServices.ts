@@ -104,7 +104,7 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
 
 const SGetAllPayments = async ({params}:Request) => {  
   try {
-    const payments = await PlanPaymentModel.find({userID: params.userID})
+    const payments = await PlanPaymentModel.find({userID: params.userID}).sort({createdAt: -1}) 
     return payments;
   } catch (error) {
     return 'ERROR_GET_PAYMENTS'
