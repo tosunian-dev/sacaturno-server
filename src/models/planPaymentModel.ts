@@ -19,6 +19,10 @@ const planPaymentSchema = new Schema<IPlanPayment>(
       type: String,
       required: true,
     },
+    mpPaymentID: {
+      type: String,
+      required: true,
+    },
     paymentDate: {
       type: Date,
       required: true,

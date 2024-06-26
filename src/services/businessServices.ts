@@ -38,6 +38,7 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     userID: businessData.ownerID,
     paymentDate: paymentDate.toDate(),
     subscriptionType: "SC_FREE",
+    mpPaymentID: '',
     email: createdBusiness.email,
   });
   console.log("planPayment", planPayment);

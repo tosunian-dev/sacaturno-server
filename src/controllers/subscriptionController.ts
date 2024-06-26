@@ -4,12 +4,13 @@ import {
   SGetSubscriptionByBusinessID,
   SCreateMercadoPagoPreference,
   SUpdateSubscriptionPlan,
-  SGetAllPayments
+  SGetAllPayments,
 } from "../services/subscriptionServices";
 import { handleError } from "../utils/error.handle";
 import { Request, Response } from "express";
 import SubscriptionModel from "../models/subscriptionModel";
 import dayjs from "dayjs";
+import PlanPaymentModel from "../models/planPaymentModel";
 
 const getSubscriptionByBusinessID = async (req: Request, res: Response) => {
   try {
@@ -50,61 +51,72 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
 const paymentWebhook = async (req: Request, res: Response) => {
   const paymentInfo = req.body;
   console.log(paymentInfo);
-  
-  // GET PAYMENT INFO BY ID //
-  axios
-    .get("https://api.mercadopago.com/v1/payments/" + paymentInfo.data.id, {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
-      },
-    })
-    .then(async (response) => {
-      const { data } = response;
-      //console.log(data.metadata);
-      //console.log('businessID',data.metadata.businessID);
-      //console.log('business_id',data.metadata.business_id);
-      console.log('STATUS WEBHOOK', data.status);
-      
-      const paymentDate = dayjs();
-      const expiracyDate = paymentDate.add(1, "month");
-      if (data.status === "approved") {
-        const updatedSubscription = {
-          userID: data.metadata.owner_id,
-          email: data.metadata.email,
-          businessID: data.metadata.business_id,
-          subscriptionType: "SC_FULL",
-          paymentDate: paymentDate.toDate(),
-          expiracyDate: expiracyDate.toDate(),
-        };
-       
-        await axios.put(`https://sacaturno-server-production.up.railway.app/api/subscription/update`, updatedSubscription).then((data) => {
-          console.log('updatesubresponse',data.data)
-        })
-      }
-    })
-    .catch((error: any) => {
-      console.log(error);
+  try {
+    const paymentExists = await PlanPaymentModel.find({
+      mpPaymentID: paymentInfo.data.id,
     });
+    if (paymentExists.length > 0) return;
+
+    // GET PAYMENT INFO BY ID //
+    axios
+      .get("https://api.mercadopago.com/v1/payments/" + paymentInfo.data.id, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.ACCESS_TOKEN}`,
+        },
+      })
+      .then(async (response) => {
+        const { data } = response;
+        //console.log(data.metadata);
+        //console.log('businessID',data.metadata.businessID);
+        //console.log('business_id',data.metadata.business_id);
+        console.log("STATUS WEBHOOK", data.status);
+
+        const paymentDate = dayjs();
+        const expiracyDate = paymentDate.add(1, "month");
+        if (data.status === "approved") {
+          const updatedSubscription = {
+            userID: data.metadata.owner_id,
+            email: data.metadata.email,
+            businessID: data.metadata.business_id,
+            subscriptionType: "SC_FULL",
+            paymentDate: paymentDate.toDate(),
+            expiracyDate: expiracyDate.toDate(),
+          };
+
+          await axios
+            .put(
+              `https://sacaturno-server-production.up.railway.app/api/subscription/update`,
+              updatedSubscription
+            )
+            .then((data) => {
+              console.log("updatesubresponse", data.data);
+            });
+        }
+      })
+      .catch((error: any) => {
+        console.log('error at paymentwebhook get info', error);
+      });
+  } catch (error) {}
 };
 
-const updateSubscriptionPlan = async (req:Request, res: Response) => {
+const updateSubscriptionPlan = async (req: Request, res: Response) => {
   try {
-    const update = await SUpdateSubscriptionPlan(req)
-    return update
+    const update = await SUpdateSubscriptionPlan(req);
+    return update;
   } catch (error) {
     handleError(res, "ERROR_UPDATE_SUBSCRIPTION");
   }
-}
+};
 
-const getAllPayments = async (req:Request, res: Response) => {
+const getAllPayments = async (req: Request, res: Response) => {
   try {
-    const payments = await SGetAllPayments(req)
+    const payments = await SGetAllPayments(req);
     return res.send(payments);
   } catch (error) {
     handleError(res, "ERROR_UPDATE_SUBSCRIPTION");
   }
-}
+};
 
 export {
   getSubscriptionByOwnerID,
@@ -112,5 +124,5 @@ export {
   createMercadoPagoPreference,
   paymentWebhook,
   updateSubscriptionPlan,
-  getAllPayments
+  getAllPayments,
 };
