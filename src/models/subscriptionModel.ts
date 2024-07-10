@@ -14,7 +14,7 @@ const subscriptionSchema = new Schema<ISubscription>(
     subscriptionType: {
       type: String,
       required: true,
-      default: 'SC_FREE'
+      default: "SC_FREE",
     },
     paymentDate: {
       type: Date,
@@ -26,12 +26,12 @@ const subscriptionSchema = new Schema<ISubscription>(
     },
     expiracyDay: {
       type: Number,
-      required: false
+      required: false,
     },
     expiracyMonth: {
       type: Number,
-      required: false
-    }
+      required: false,
+    },
   },
   {
     timestamps: true,

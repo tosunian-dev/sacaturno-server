@@ -13,21 +13,18 @@ const SCreateUser = async (userData: IUser) => {
   if (userExists.length > 0) {
     return "USER_EXISTS";
   }
-
   const pwEncrypted = await encrypt(userData.password);
   userData.password = pwEncrypted;
   const createdUser = await UserModel.create(userData);
-
   SSendConfirmationEmail(createdUser);
-
   return { createdUser, msg: "USER_CREATED_SUCCESSFULLY" };
 };
 
 const SSendConfirmationEmail = async (userData: IUser) => {
   if (userData._id !== undefined) {
     const token = jwtGen(userData._id);
-    const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
-    const { data, error } = await resend.emails.send({
+    const resend = new Resend(process.env.RESEND_KEY);
+    const { error } = await resend.emails.send({
       from: "SacaTurno <noresponder@sacaturno.com.ar>",
       to: [userData.email],
       subject: "Verificá tu cuenta",
@@ -182,12 +179,12 @@ const SUpdateUserProfileImage = async (imageData: {
   path: string;
   userId: string;
   file_name: string;
-}) => {  
+}) => {
   const updatedUser = await UserModel.findOneAndUpdate(
-    {_id: imageData.userId},
+    { _id: imageData.userId },
     {
       profileImage: imageData.file_name,
-    },
+    }
   );
   if (updatedUser?.profileImage !== "user.png") {
     fs.unlink(`profile_images\\${updatedUser?.profileImage}`, async (error) => {
@@ -204,8 +201,8 @@ const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
     const business = await BusinessModel.findOne({ ownerID: params.ownerID });
     if (business) {
       const token = jwtGen(params.ownerID);
-      const resend = new Resend("re_EkS7zLK9_AWfKQMQ3K1rQYXiBQ2SfBRCW");
-      const { data, error } = await resend.emails.send({
+      const resend = new Resend(process.env.RESEND_KEY);
+      const { error } = await resend.emails.send({
         from: "SacaTurno <noresponder@sacaturno.com.ar>",
         to: [business.email],
         subject: "Recuperar contraseña",
@@ -298,12 +295,11 @@ interface payload extends JwtPayload {
 const SUpdatePasswordOnRecovery = async (req: Request) => {
   const userData = verifyToken(req.params.token) as payload;
   const encryptedPassword = await encrypt(req.body.password);
-  const updatedUser = await UserModel.findOneAndUpdate(
+  await UserModel.findOneAndUpdate(
     { _id: userData.userId },
     { password: encryptedPassword },
     { new: true }
   );
-  console.log(updatedUser);
 };
 
 export {

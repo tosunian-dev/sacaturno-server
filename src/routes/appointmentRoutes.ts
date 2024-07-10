@@ -9,7 +9,7 @@ import {
   cancelBooking,
   getPublicAppsByBusinessID,
   getTodayAppointmentsByBusinessID,
-  createAllDayAppointments
+  createAllDayAppointments,
 } from "../controllers/appointmentController";
 import { checkAuth } from "../middlewares/authMiddleware";
 
@@ -36,6 +36,9 @@ router.delete("/appointment/delete/:ID", checkAuth, deleteAppointment);
 /** GET PUBLIC APPOINTMENTS BY BUSINESS ID */
 router.get("/appointment/public/get/:businessID", getPublicAppsByBusinessID);
 /** GET TODAY APPOINTMENTS BY BUSINESS ID */
-router.get("/appointment/get/today/:businessID", getTodayAppointmentsByBusinessID);
+router.get(
+  "/appointment/get/today/:businessID",
+  getTodayAppointmentsByBusinessID
+);
 
 export default router;

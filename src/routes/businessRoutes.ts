@@ -12,7 +12,7 @@ import {
   getServicesByOwnerID,
   getBusinessBySlug,
   getBusinessByEmail,
-  editService
+  editService,
 } from "../controllers/businessController";
 import { checkAuth } from "../middlewares/authMiddleware";
 import multerMiddleware from "../middlewares/multerMiddleware";

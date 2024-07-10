@@ -3,7 +3,6 @@ import SubscriptionModel from "../models/subscriptionModel";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import dayjs from "dayjs";
 import PlanPaymentModel from "../models/planPaymentModel";
-import { IPlanPayment } from "../interfaces/planPayment.interface";
 
 interface IPreference {
   items: {
@@ -49,9 +48,9 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
       },
     ],
     back_urls: {
-      success: `${process.env.FRONTEND_URL}/admin/miempresa/settings`,
-      failure: `${process.env.FRONTEND_URL}/admin/miempresa/settings`,
-      pending: `${process.env.FRONTEND_URL}/admin/miempresa/settings`,
+      success: `${process.env.FRONTEND_URL}/admin/perfil`,
+      failure: `${process.env.FRONTEND_URL}/admin/perfil`,
+      pending: `${process.env.FRONTEND_URL}/admin/perfil`,
     },
     auto_return: "approved",
     metadata: {
@@ -84,16 +83,16 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
     );
     console.log("updatedSub", updated);
     try {
-        const planPayment = await PlanPaymentModel.create({
-          price: process.env.FULL_PLAN_PRICE,
-          businessID: body.businessID,
-          userID: updated?.ownerID,
-          paymentDate: body.paymentDate,
-          subscriptionType: body.subscriptionType,
-          email: body.email,
-          mpPaymentID: body.mpPaymentID
-        });
-        return planPayment;
+      const planPayment = await PlanPaymentModel.create({
+        price: process.env.FULL_PLAN_PRICE,
+        businessID: body.businessID,
+        userID: updated?.ownerID,
+        paymentDate: body.paymentDate,
+        subscriptionType: body.subscriptionType,
+        email: body.email,
+        mpPaymentID: body.mpPaymentID,
+      });
+      return planPayment;
     } catch (error) {
       return "ERROR_CREATE_PLAN_PAYMENT";
     }
@@ -102,19 +101,21 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
   }
 };
 
-const SGetAllPayments = async ({params}:Request) => {  
+const SGetAllPayments = async ({ params }: Request) => {
   try {
-    const payments = await PlanPaymentModel.find({userID: params.userID}).sort({createdAt: -1}) 
+    const payments = await PlanPaymentModel.find({
+      userID: params.userID,
+    }).sort({ createdAt: -1 });
     return payments;
   } catch (error) {
-    return 'ERROR_GET_PAYMENTS'
+    return "ERROR_GET_PAYMENTS";
   }
-}
+};
 
 export {
   SGetSubscriptionByOwnerID,
   SGetSubscriptionByBusinessID,
   SCreateMercadoPagoPreference,
   SUpdateSubscriptionPlan,
-  SGetAllPayments
+  SGetAllPayments,
 };

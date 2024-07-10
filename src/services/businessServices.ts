@@ -20,17 +20,24 @@ const SCreateBusiness = async (businessData: IBusiness) => {
   }
   // CREATE BUSINESS
   const createdBusiness = await BusinessModel.create(businessData);
-  // CREATE SUBSCRIPTION DETAILS
+
+  // CREATE FREE SUBSCRIPTION DETAILS
+
+  // FOR 1 MONTH FREE TRIAL
+  // const paymentDate = dayjs();
+  // const expiracyDate = paymentDate.add(1, "month");
+
   const paymentDate = dayjs();
-  const expiracyDate = paymentDate.add(1, "month");
+  const expDate = paymentDate.add(15, "day");
+
   const subDetails: ISubscription = {
     ownerID: businessData.ownerID,
     businessID: createdBusiness._id,
     subscriptionType: "SC_FREE",
     paymentDate: paymentDate.toDate(),
-    expiracyDate: expiracyDate.toDate(),
-    expiracyMonth: dayjs().month() + 2,
-    expiracyDay: dayjs().date(),
+    expiracyDate: expDate.toDate(),
+    expiracyMonth: dayjs(expDate).month(),
+    expiracyDay: dayjs(expDate).date(),
   };
   const subscriptionDetails = await SubscriptionModel.create(subDetails);
   const planPayment: IPlanPayment = await PlanPaymentModel.create({
@@ -39,10 +46,9 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     userID: businessData.ownerID,
     paymentDate: paymentDate.toDate(),
     subscriptionType: "SC_FREE",
-    mpPaymentID: '',
+    mpPaymentID: "",
     email: createdBusiness.email,
   });
-  console.log("planPayment", planPayment);
   return { createdBusiness, subscriptionDetails };
 };
 
@@ -53,7 +59,6 @@ const SGetBusinessByOwnerID = async ({ params }: Request) => {
 
 const SEditBusinessData = async (businessData: IBusiness) => {
   const slugExists = await BusinessModel.find({ slug: businessData.slug });
-
   if (
     slugExists.length === 0 ||
     slugExists[0]._id.toString() === businessData._id

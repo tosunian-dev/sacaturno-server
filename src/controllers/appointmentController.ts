@@ -25,8 +25,6 @@ const createAppointment = async ({body}:Request, res: Response) => {
 
 const bookAppointment = async ({body}:Request, res: Response) => {
     try {
-        console.log('body', body);
-        
         const appointmentBooked = await SBookAppointment(body)
         res.send(appointmentBooked)
     } catch (error) {
@@ -104,7 +102,6 @@ const createAllDayAppointments = async ({body}:Request, res: Response) => {
         res.send({appointmentData, msg: 'APPOINTMENT_CREATED'})
     } catch (error) {
         handleError(res, 'ERROR_APPOINTMENT_CREATION');
-
     }
 }
 

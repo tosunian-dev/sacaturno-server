@@ -1,4 +1,4 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import connectDB from "./config/db";
 import cors from "cors";
 import userRoutes from "./routes/userRoutes";

@@ -14,6 +14,7 @@ const UserSchema = new Schema<IUser>(
     phone: {
       type: Number,
       required: false,
+      default: null,
     },
     password: {
       type: String,
@@ -29,10 +30,6 @@ const UserSchema = new Schema<IUser>(
       default: false,
       required: false,
     },
-    birthdate: {
-      type: Date,
-      required: false
-    }
   },
   {
     timestamps: true,
