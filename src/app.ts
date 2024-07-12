@@ -8,6 +8,7 @@ import cookieParser from "cookie-parser";
 import subscriptionRoutes from "./routes/subscriptionRoutes";
 import { handlePlanExpiracy } from "./utils/planExpiracy";
 import cron from "node-cron";
+import { Request } from "express";
 
 // SERVER INICIALIZATION
 const app = express();
@@ -28,7 +29,12 @@ cron.schedule(" 0 0 * * * ", () => {
 
 // ROUTES
 app.use(cookieParser());
-app.use(cors());
+app.use(
+  cors<Request>({
+    origin: ["https://sacaturno.com.ar", "https://www.sacaturno.com.ar"],
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use("/api", userRoutes);
 app.use("/api", appointmentRoutes);
