@@ -11,4 +11,5 @@ export interface IAppointment {
   _id?: string;
   service: string;
   price: number;
+  description: string;
 }

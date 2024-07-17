@@ -50,6 +50,10 @@ const AppointmentSchema = new Schema<IAppointment>(
       required: false,
       default: "",
     },
+    description: {
+      type: String,
+      required: false,
+    },
     price: {
       type: Number,
       required: true

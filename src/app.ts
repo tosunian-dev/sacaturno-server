@@ -31,7 +31,7 @@ cron.schedule(" 0 0 * * * ", () => {
 app.use(cookieParser());
 app.use(
   cors<Request>({
-    origin: ["https://sacaturno.com.ar", "https://www.sacaturno.com.ar"],
+    origin: ["https://sacaturno.com.ar", "https://www.sacaturno.com.ar", "http://localhost:3000"],
     credentials: true,
   })
 );
