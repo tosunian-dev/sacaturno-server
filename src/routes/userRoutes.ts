@@ -9,6 +9,7 @@ import {
   verifyConfirmToken,
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
+  getUserByEmail
 } from "../controllers/userController";
 import multerMiddleware from "../middlewares/multerMiddleware";
 import { checkAuth } from "../middlewares/authMiddleware";
@@ -18,6 +19,8 @@ router.post("/user/create", createUser);
 router.post("/user/login", loginUser);
 router.put("/user/editprofile", checkAuth, editUser);
 router.get("/user/get/:ID", checkAuth, getUser);
+router.get("/user/getbyemail/:email", getUserByEmail);
+
 router.post(
   "/user/updateimage",
   checkAuth,

@@ -133,11 +133,18 @@ const SVerifyConfirmToken = async ({ params }: Request) => {
 
 const SGetUser = async ({ params }: Request) => {
   const user = await UserModel.find({ _id: params.ID });
-  const user_data = user.at(0);
-  if (user_data === undefined) {
+  if (user === null) {
     return "USER_NOT_FOUND";
   }
-  return user_data;
+  return user;
+};
+
+const SGetUserByEmail = async ({ params }: Request) => {
+  const user = await UserModel.findOne({ email: params.email });
+  if (user === null) {
+    return "USER_NOT_FOUND";
+  }
+  return user;
 };
 
 const SEditUser = async (req: IUser) => {
@@ -311,4 +318,5 @@ export {
   SVerifyConfirmToken,
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
+  SGetUserByEmail
 };

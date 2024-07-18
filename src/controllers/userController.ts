@@ -9,6 +9,7 @@ import {
   SVerifyConfirmToken,
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
+  SGetUserByEmail,
 } from "../services/userServices";
 import { serialize } from "cookie";
 import fs from "fs";
@@ -77,6 +78,15 @@ const getUser = async (req: Request, res: Response) => {
   }
 };
 
+const getUserByEmail = async (req: Request, res: Response) => {
+  try {
+    const response_data = await SGetUserByEmail(req);
+    res.send({ response_data, msg: "USER_GET_SUCCESSFULLY" });
+  } catch (error) {
+    handleError(res, "ERROR_GET_USER");
+  }
+};
+
 const updateUserImage = async (req: RequestExtended, res: Response) => {
   try {
     const { user, file } = req;
@@ -134,4 +144,5 @@ export {
   verifyConfirmToken,
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
+  getUserByEmail
 };
