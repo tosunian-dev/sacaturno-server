@@ -6,7 +6,7 @@ import { jwtGen, verifyToken } from "../utils/jwtGen.handle";
 import fs from "fs";
 import { Resend } from "resend";
 import { JwtPayload } from "jsonwebtoken";
-import BusinessModel from "../models/businessModel";
+import BusinessModel from "../models/userModel";
 
 const SCreateUser = async (userData: IUser) => {
   const userExists = await UserModel.find({ email: userData.email });
@@ -205,13 +205,13 @@ const SUpdateUserProfileImage = async (imageData: {
 
 const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
   if (params.ownerID) {
-    const business = await BusinessModel.findOne({ ownerID: params.ownerID });
-    if (business) {
+    const user = await UserModel.findOne({ _id: params.ownerID });
+    if (user) {
       const token = jwtGen(params.ownerID);
       const resend = new Resend(process.env.RESEND_KEY);
       const { error } = await resend.emails.send({
         from: "SacaTurno <noresponder@sacaturno.com.ar>",
-        to: [business.email],
+        to: [user.email],
         subject: "Recuperar contraseña",
         html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
       <html dir="ltr" lang="en">
