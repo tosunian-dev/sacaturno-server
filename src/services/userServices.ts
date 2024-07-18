@@ -132,7 +132,7 @@ const SVerifyConfirmToken = async ({ params }: Request) => {
 };
 
 const SGetUser = async ({ params }: Request) => {
-  const user = await UserModel.find({ _id: params.ID });
+  const user = await UserModel.findOne({ _id: params.ID });
   if (user === null) {
     return "USER_NOT_FOUND";
   }
