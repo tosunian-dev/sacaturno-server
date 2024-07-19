@@ -95,7 +95,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
         }
       })
       .catch((error: any) => {
-        console.log("error at paymentwebhook get info", error);
+        console.log("duplicated MP request");
       });
   } catch (error) {}
 };
