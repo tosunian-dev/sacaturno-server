@@ -86,7 +86,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
 
           await axios
             .put(
-              `https://sacaturno-server-production.up.railway.app/api/subscription/update`,
+              `${process.env.BACKEND_URL}/subscription/update`,
               updatedSubscription
             )
             .then((data) => {
