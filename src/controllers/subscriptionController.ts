@@ -50,6 +50,8 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
 
 const paymentWebhook = async (req: Request, res: Response) => {
   const paymentInfo = req.body;
+  console.log('paymentinfo', paymentInfo);
+  
   try {
     const paymentExists = await PlanPaymentModel.find({
       mpPaymentID: paymentInfo.data.id,
