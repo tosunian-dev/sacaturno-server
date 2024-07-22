@@ -58,7 +58,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
     });
     if (paymentExists.length > 0) {
       console.log("MP Webhook: payment is duplicated;", paymentExists);
-      return;
+      return res.status(200).send('OK')
     } else {
       // GET PAYMENT INFO BY ID //
       axios
@@ -73,8 +73,6 @@ const paymentWebhook = async (req: Request, res: Response) => {
           //console.log(data.metadata);
           //console.log('businessID',data.metadata.businessID);
           //console.log('business_id',data.metadata.business_id);
-          console.log("STATUS WEBHOOK", data.status);
-          console.log("mpPaymentID", paymentInfo.data.id);
           const paymentDate = dayjs();
           const expiracyDate = paymentDate.add(1, "month");
           if (data.status === "approved") {
@@ -87,7 +85,6 @@ const paymentWebhook = async (req: Request, res: Response) => {
               expiracyDate: expiracyDate.toDate(),
               mpPaymentID: paymentInfo.data.id,
             };
-
             await axios
               .put(
                 `${process.env.BACKEND_URL}/subscription/update`,
@@ -103,6 +100,7 @@ const paymentWebhook = async (req: Request, res: Response) => {
         });
     }
   } catch (error) {}
+  return res.status(200).send('OK')
 };
 
 const updateSubscriptionPlan = async (req: Request, res: Response) => {
