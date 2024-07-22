@@ -23,9 +23,10 @@ connectDB().then(() => {
 });
 
 // SCHEDULED SUBSCRIPTION EXPIRACY HANDLER
-cron.schedule(" 25 19 * * * ", () => {
+cron.schedule(" 59 19 * * * ", () => {
   handlePlanExpiracy();
 });
+
 
 // ROUTES
 app.use(cookieParser());
