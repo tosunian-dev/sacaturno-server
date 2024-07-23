@@ -58,6 +58,7 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
       businessID: req.body.businessID,
       ownerID: req.body.ownerID,
     },
+    external_reference: req.body.ownerID
   };
 
   try {
