@@ -28,6 +28,12 @@ const subscriptionSchema = new Schema<ISubscription>(
       type: Number,
       required: false,
     },
+    expiracyYear: {
+      type: Number,
+      required: false,
+      value: 2024,
+      default: 2024
+    },
     expiracyMonth: {
       type: Number,
       required: false,

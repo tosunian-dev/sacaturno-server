@@ -10,6 +10,8 @@ import utc from "dayjs/plugin/utc";
 import "dayjs/locale/es-mx";
 import timezone from "dayjs/plugin/timezone";
 import advanced from "dayjs/plugin/advancedFormat";
+import SubscriptionModel from "../models/subscriptionModel";
+import ISubscription from "../interfaces/subscription.interface";
 
 interface IAppointmentWithEmail extends IAppointment {
   businessEmail: string;
@@ -47,11 +49,27 @@ dayjs.updateLocale("en", {
 });
 
 const SCreateAppointment = async (appointmentData: IAppointment) => {
+  const subData: ISubscription | null = await SubscriptionModel.findOne({businessID: appointmentData.businessID})
+  const subStart = dayjs(subData?.paymentDate).toDate()
+  const subEnd = dayjs().toDate()
+  const qApps = await AppointmentModel.find({
+    businessID: appointmentData.businessID,
+    createdAt: { $gte: subStart, $lte: subEnd }
+  })
+  if(qApps.length > 400) return
   const appointment = await AppointmentModel.create(appointmentData);
   return appointment;
 };
 
 const SCreateAllDayAppointments = async (appointments: IAppointment[]) => {
+  const subData: ISubscription | null = await SubscriptionModel.findOne({businessID: appointments[0].businessID})
+  const subStart = dayjs(subData?.paymentDate).toDate()
+  const subEnd = dayjs().toDate()
+  const qApps = await AppointmentModel.find({
+    businessID: appointments[0].businessID,
+    createdAt: { $gte: subStart, $lte: subEnd }
+  })
+  if(qApps.length > 400) return
   const appointment = await AppointmentModel.insertMany(appointments);
   return appointment;
 };

@@ -6,4 +6,6 @@ export default interface ISubscription {
   expiracyDate: Date;
   expiracyDay?: number,
   expiracyMonth?: number
+  expiracyYear?: number
+  updatedAt?: Date
 }
