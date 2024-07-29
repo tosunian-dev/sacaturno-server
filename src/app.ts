@@ -23,19 +23,20 @@ connectDB().then(() => {
 });
 
 // SCHEDULED SUBSCRIPTION EXPIRACY HANDLER
-cron.schedule(" 59 19 * * * ", () => {
+cron.schedule(" 40 17 * * * ", () => {
   handlePlanExpiracy();
 });
 
-
-// ROUTES
-app.use(cookieParser());
+// CORS SETTINGS
 app.use(
   cors<Request>({
     origin: ["https://sacaturno.com.ar", "https://www.sacaturno.com.ar", "http://localhost:3000"],
     credentials: true,
   })
 );
+
+// ROUTES
+app.use(cookieParser());
 app.use(express.json());
 app.use("/api", userRoutes);
 app.use("/api", appointmentRoutes);
