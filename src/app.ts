@@ -23,7 +23,7 @@ connectDB().then(() => {
 });
 
 // SCHEDULED SUBSCRIPTION EXPIRACY HANDLER
-cron.schedule(" 40 17 * * * ", () => {
+cron.schedule(" 35 1 * * * ", () => {
   handlePlanExpiracy();
 });
 
