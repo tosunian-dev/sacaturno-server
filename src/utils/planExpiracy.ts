@@ -6,10 +6,12 @@ import { Resend } from "resend";
 export const handlePlanExpiracy = async () => {
   const month = dayjs().month() + 1;
   const day = dayjs().date();
+  const year = dayjs().year();
 
   const subscriptions = await SubscriptionModel.find({
     expiracyDay: day,
     expiracyMonth: month,
+    expiracyYear: year
   });
   if (subscriptions.length === 0) {
     return console.log(
