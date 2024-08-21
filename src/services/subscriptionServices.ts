@@ -58,7 +58,8 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
       businessID: req.body.businessID,
       ownerID: req.body.ownerID,
     },
-    external_reference: req.body.ownerID
+    external_reference: req.body.ownerID,
+    notification_url: "https://sacaturno-server-production.up.railway.app/api/subscription/webhook"
   };
 
   try {
