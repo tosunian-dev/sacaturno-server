@@ -12,6 +12,8 @@ import timezone from "dayjs/plugin/timezone";
 import advanced from "dayjs/plugin/advancedFormat";
 import SubscriptionModel from "../models/subscriptionModel";
 import ISubscription from "../interfaces/subscription.interface";
+import DayScheduleModel from "../models/dayScheduleModel";
+import AppointmentScheduleModel from "../models/appointmentScheduleModel";
 
 interface IAppointmentWithEmail extends IAppointment {
   businessEmail: string;
@@ -474,6 +476,15 @@ const SBusinessCancelledBooking = async (
   }
 };
 
+const SGetDaysAndAppointmentsByBusinessID = async ({ params }: Request) => {
+  const days = await DayScheduleModel.find({
+    businessID: params.businessID,
+  });
+  const appointments = await AppointmentScheduleModel.find({businessID: params.businessID})
+
+  return {days, appointments};
+};
+
 export {
   SCreateAppointment,
   SBookAppointment,
@@ -485,4 +496,5 @@ export {
   SGetPublicAppsByBusinessID,
   SGetTodayAppointmentsByBusinessID,
   SCreateAllDayAppointments,
-};
+  SGetDaysAndAppointmentsByBusinessID
+}

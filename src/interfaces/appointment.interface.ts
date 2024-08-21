@@ -1,5 +1,5 @@
 export interface IAppointment {
-  businessID: string;
+  businessID: string ;
   clientID: string | "";
   status: "booked" | "unbooked";
   start: Date;

@@ -13,7 +13,8 @@ import {
   SGetServicesByOwnerID,
   SGetBusinessBySlug,
   SGetBusinessByEmail,
-  SEditServiceData
+  SEditServiceData,
+  SEditScheduleAutomationParams
 } from "../services/businessServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
@@ -169,6 +170,18 @@ const editService = async ({ body }: Request, res: Response) => {
   }
 };
 
+const editScheduleAutomationParams = async (req: Request, res: Response) => {
+  try {
+    const editedBusiness = await SEditScheduleAutomationParams(req);
+    //if (editedBusiness === "BUSINESS_NOT_FOUND") {
+    //  return res.send({ msg: "BUSINESS_NOT_FOUND" });
+    //}
+    res.send({ editedBusiness, msg: "SCHEDULE_EDITED" });
+  } catch (error) {
+    handleError(res, "ERROR_EDIT_SCHEDULE");
+  }
+};
+
 export {
   createBusiness,
   getBusinessByName,
@@ -182,5 +195,6 @@ export {
   getServicesByOwnerID,
   getBusinessBySlug,
   getBusinessByEmail,
-  editService
+  editService,
+  editScheduleAutomationParams
 };

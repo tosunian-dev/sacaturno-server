@@ -9,6 +9,10 @@ import ISubscription from "../interfaces/subscription.interface";
 import SubscriptionModel from "../models/subscriptionModel";
 import PlanPaymentModel from "../models/planPaymentModel";
 import { IPlanPayment } from "../interfaces/planPayment.interface";
+import { IDaySchedule } from "../interfaces/daySchedule.interface";
+import DayScheduleModel from "../models/dayScheduleModel";
+import { generateAppointments } from "../utils/appointmentGenerator";
+import AppointmentModel from "../models/appointmentModel";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
   // CHECK IF BUSINESS EXISTS
@@ -36,7 +40,7 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     subscriptionType: "SC_FREE",
     paymentDate: paymentDate.toDate(),
     expiracyDate: expDate.toDate(),
-    expiracyMonth: dayjs(expDate).month()+1,
+    expiracyMonth: dayjs(expDate).month() + 1,
     expiracyDay: dayjs(expDate).date(),
   };
   const subscriptionDetails = await SubscriptionModel.create(subDetails);
@@ -49,6 +53,26 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     mpPaymentID: "",
     email: createdBusiness.email,
   });
+
+  // CREATE SCHEDULE: ADD 7 DAYS IN DAY_SCHEDULES
+  const daysToSave: IDaySchedule[] = [];
+  const dayNames = ["LUN", "MAR", "MIE", "JUE", "VIE", "SAB", "DOM"];
+
+  for (let day = 0; day < dayNames.length; day++) {
+    const dayObj: IDaySchedule = {
+      appointmentDuration: 60,
+      businessID: createdBusiness._id,
+      ownerID: businessData.ownerID,
+      day: dayNames[day],
+      dayStart: 9,
+      dayEnd: 17,
+      enabled: true,
+    };
+    daysToSave.push(dayObj);
+  }
+
+  await DayScheduleModel.insertMany(daysToSave);
+
   return { createdBusiness, subscriptionDetails };
 };
 
@@ -162,6 +186,42 @@ const SEditServiceData = async (serviceData: {
   }
 };
 
+const SEditScheduleAutomationParams = async (req: Request) => {
+  const scheduleData = await BusinessModel.findByIdAndUpdate(
+    { _id: req.params.businessID },
+    req.body
+  );
+
+  // comparar el campo automaticSchedule
+  if (
+    scheduleData?.automaticSchedule === false &&
+    req.body.automaticSchedule === true
+  ) {
+    // en businessmodel cambiar scheduleEnd con la fecha de hoy + scheduledaystocreate
+    const scheduleEndToSave = dayjs()
+      .add(req.body.scheduleDaysToCreate, "day")
+      .toDate();
+    const updatedBusiness = await BusinessModel.findByIdAndUpdate(
+      req.params.businessID,
+      { scheduleEnd: scheduleEndToSave },
+      { new: true }
+    );
+    console.log(dayjs().toDate());
+
+    // buscar todos los turnos desde la fecha de hoy y borrarlos
+    const deleteFutureAppointments = await AppointmentModel.deleteMany({
+      start: { $gte: dayjs().toDate() },
+      businessID: req.params.businessID,
+      status: "unbooked",
+    });
+    console.log(deleteFutureAppointments);
+
+    // generar nuevos turnos con los parametros nuevos
+    if (updatedBusiness) await generateAppointments(updatedBusiness);
+    return;
+  }
+};
+
 export {
   SCreateBusiness,
   SGetBusinessByOwnerID,
@@ -176,4 +236,5 @@ export {
   SGetBusinessBySlug,
   SGetBusinessByEmail,
   SEditServiceData,
+  SEditScheduleAutomationParams,
 };

@@ -1,3 +1,4 @@
+import { date } from "zod";
 import { IBusiness } from "../interfaces/business.interface";
 import { Schema, Types, model, Model } from "mongoose";
 
@@ -36,17 +37,25 @@ const BusinessSchema = new Schema<IBusiness>(
       required: false,
       default: "user.png",
     },
-    appointmentDuration: {
-      type: String,
+    scheduleAnticipation: {
+      type: Number,
       required: true,
+      default: 3
     },
-    dayStart: {
-      type: String,
+    scheduleDaysToCreate: {
+      type: Number,
       required: true,
+      default: 7
     },
-    dayEnd: {
-      type: String,
-      required: true,
+    scheduleEnd: {
+      type: Date,
+      required: false,
+      default: new Date()
+    },
+    automaticSchedule: {
+      type: Boolean,
+      default: false,
+      required: false
     },
     subscription: {
       type: String,
