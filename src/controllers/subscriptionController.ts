@@ -50,15 +50,15 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
 
 const paymentWebhook = async (req: Request, res: Response) => {
   const paymentInfo = req.body;
-  console.log('paymentinfo', paymentInfo);
-  
+  console.log("paymentinfo", paymentInfo);
+
   try {
     const paymentExists = await PlanPaymentModel.find({
       mpPaymentID: paymentInfo.data.id,
     });
     if (paymentExists.length > 0) {
       console.log("MP Webhook: payment is duplicated;", paymentExists);
-      return res.status(200).send('OK')
+      return res.status(200).send("OK");
     } else {
       // GET PAYMENT INFO BY ID //
       axios
@@ -100,7 +100,12 @@ const paymentWebhook = async (req: Request, res: Response) => {
         });
     }
   } catch (error) {}
-  return res.status(200).send('OK')
+  return res
+    .status(200)
+    .send({
+      notification_url:
+        "https://sacaturno-server-production.up.railway.app/api/subscription/webhook",
+    });
 };
 
 const updateSubscriptionPlan = async (req: Request, res: Response) => {
