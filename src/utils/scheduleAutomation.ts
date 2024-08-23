@@ -8,6 +8,7 @@ import weekday from "dayjs/plugin/weekday";
 import { IAppointmentSchedule } from "../interfaces/appointmentSchedule.interface";
 import { IAppointment } from "../interfaces/appointment.interface";
 import AppointmentModel from "../models/appointmentModel";
+import SubscriptionModel from "../models/subscriptionModel";
 
 dayjs.extend(weekday);
 dayjs.extend(isoWeek);
@@ -22,12 +23,18 @@ export const handleScheduleAutomation = async () => {
   for (let business = 0; business < allBusinesses.length; business++) {
     const businessData = allBusinesses[business];
 
+    // verificar si el plan esta expirado
+    const subscriptionData = await SubscriptionModel.findOne({
+      businessID: businessData._id,
+    });
+    if (subscriptionData?.subscriptionType === "SC_EXPIRED") return;
+
+    // verifica si hoy hay que crear turnos
     const dayDifference = dayjs(businessData.scheduleEnd).diff(
       dayjs().toDate(),
       "day",
       true
     );
-    console.log(dayDifference);
     if (dayDifference <= businessData.scheduleAnticipation) {
       // OBTENER TODOS LOS TURNOS PROGRAMADOS
       const allAppointments: IAppointmentSchedule[] =
@@ -81,11 +88,13 @@ export const handleScheduleAutomation = async () => {
     }
 
     // a scheduleEnd, sumarle scheduleDaysToCreate y actualizar scheduleEnd en businessmodel
-    const nextScheduleEnd = dayjs(businessData.scheduleEnd).add(
-      businessData.scheduleDaysToCreate,
-      "day"
-    ).toDate();
+    const nextScheduleEnd = dayjs(businessData.scheduleEnd)
+      .add(businessData.scheduleDaysToCreate, "day")
+      .toDate();
 
-    await BusinessModel.findByIdAndUpdate({_id: businessData._id}, {scheduleEnd: nextScheduleEnd})
+    await BusinessModel.findByIdAndUpdate(
+      { _id: businessData._id },
+      { scheduleEnd: nextScheduleEnd }
+    );
   }
 };

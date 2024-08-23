@@ -199,7 +199,6 @@ export const handlePlanExpiracy = async () => {
           });
         }
       }
-
       console.log("EXPIRED SUBSCRIPTION: ", expiredSubscription);
     } catch (error) {
       console.log(

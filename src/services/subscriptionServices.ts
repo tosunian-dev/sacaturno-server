@@ -48,9 +48,9 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
       },
     ],
     back_urls: {
-      success: `${process.env.FRONTEND_URL}/admin/perfil`,
-      failure: `${process.env.FRONTEND_URL}/admin/perfil`,
-      pending: `${process.env.FRONTEND_URL}/admin/perfil`,
+      success: `${process.env.FRONTEND_URL}/admin/profile`,
+      failure: `${process.env.FRONTEND_URL}/admin/profile`,
+      pending: `${process.env.FRONTEND_URL}/admin/profile`,
     },
     auto_return: "approved",
     metadata: {
