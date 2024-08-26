@@ -210,7 +210,7 @@ const SEditScheduleAutomationParams = async (req: Request) => {
 
     // buscar todos los turnos desde la fecha de hoy y borrarlos
     const deleteFutureAppointments = await AppointmentModel.deleteMany({
-      start: { $gte: dayjs().toDate() },
+      start: { $gte: dayjs().startOf('day').toDate() },
       businessID: req.params.businessID,
       status: "unbooked",
     });
