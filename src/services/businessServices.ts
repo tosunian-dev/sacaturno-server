@@ -192,6 +192,25 @@ const SEditScheduleAutomationParams = async (req: Request) => {
     req.body
   );
 
+  // regenerar turnos al guardar cambios estando automaticSchedule activo
+  if (
+    scheduleData?.automaticSchedule === true &&
+    req.body.automaticSchedule === true
+  ) {
+    const businessData = await BusinessModel.findById(req.params.businessID);
+    // buscar todos los turnos desde la fecha de hoy y borrarlos
+    const deleteFutureAppointments = await AppointmentModel.deleteMany({
+      start: { $gte: dayjs().startOf("day").toDate() },
+      businessID: req.params.businessID,
+      status: "unbooked",
+    });
+
+    // generar nuevos turnos con los parametros nuevos
+    if (businessData) await generateAppointments(businessData);
+  }
+
+
+  // guardar datos de agenda y regenerar turnos al guardar cambios estando automaticSchedule desactivado
   // comparar el campo automaticSchedule
   if (
     scheduleData?.automaticSchedule === false &&
@@ -206,15 +225,13 @@ const SEditScheduleAutomationParams = async (req: Request) => {
       { scheduleEnd: scheduleEndToSave },
       { new: true }
     );
-    console.log(dayjs().toDate());
 
     // buscar todos los turnos desde la fecha de hoy y borrarlos
     const deleteFutureAppointments = await AppointmentModel.deleteMany({
-      start: { $gte: dayjs().startOf('day').toDate() },
+      start: { $gte: dayjs().startOf("day").toDate() },
       businessID: req.params.businessID,
       status: "unbooked",
     });
-    console.log(deleteFutureAppointments);
 
     // generar nuevos turnos con los parametros nuevos
     if (updatedBusiness) await generateAppointments(updatedBusiness);

@@ -1,7 +1,5 @@
-import { log } from "console";
 import dayjs from "dayjs";
 import BusinessModel from "../models/businessModel";
-import DayScheduleModel from "../models/dayScheduleModel";
 import AppointmentScheduleModel from "../models/appointmentScheduleModel";
 import isoWeek from "dayjs/plugin/isoWeek";
 import weekday from "dayjs/plugin/weekday";
@@ -16,7 +14,7 @@ dayjs.extend(isoWeek);
 export const handleScheduleAutomation = async () => {
   // SEARCH ALL BUSINESSES WITH AUTOMATIC SCHEDULE ENABLED
 
-  // buscar por automaticSchedule = true y que scheduleEnd tenga la misma fecha que hoy
+  // buscar por automaticSchedule = true
   const allBusinesses = await BusinessModel.find({ automaticSchedule: true });
 
   // forloop: filtrar empresas que deban crear turnos hoy; diferencia entre dayjs().toDate() y scheduleEnd === scheduleAnticipation
@@ -36,6 +34,13 @@ export const handleScheduleAutomation = async () => {
       true
     );
     if (dayDifference <= businessData.scheduleAnticipation) {
+      // buscar todos los turnos desde la fecha de hoy y borrarlos
+      await AppointmentModel.deleteMany({
+        start: { $gte: businessData.scheduleEnd },
+        businessID: businessData._id,
+        status: "unbooked",
+      });
+
       // OBTENER TODOS LOS TURNOS PROGRAMADOS
       const allAppointments: IAppointmentSchedule[] =
         await AppointmentScheduleModel.find({
@@ -88,9 +93,12 @@ export const handleScheduleAutomation = async () => {
     }
 
     // a scheduleEnd, sumarle scheduleDaysToCreate y actualizar scheduleEnd en businessmodel
+    console.log("businessData.scheduleEnd", businessData.scheduleEnd);
+
     const nextScheduleEnd = dayjs(businessData.scheduleEnd)
       .add(businessData.scheduleDaysToCreate, "day")
       .toDate();
+    console.log("nextScheduleEnd", nextScheduleEnd);
 
     await BusinessModel.findByIdAndUpdate(
       { _id: businessData._id },
