@@ -14,7 +14,7 @@ export const generateAppointments = async (businessData: IBusiness) => {
       businessID: businessData._id,
     });
   // POR CADA DIA A CREAR DESDE EL DIA DE hHOY, VERIFICAR QUE TURNOS TIENEN ESE DAYNUMBER Y CREAR TURNOS PARA CADA UNO
-  for (let day = 0; day < businessData.scheduleDaysToCreate; day++) {
+  for (let day = 0; day < businessData.scheduleDaysToCreate + 1; day++) {
     // OBTENER DIA Y MES DEL DIA DE TURNOS A CREAR
     const dayToCreateDateObj = dayjs().add(day, "day");
     const dayToCreateNumber = Number(dayjs(dayToCreateDateObj).format("d"));

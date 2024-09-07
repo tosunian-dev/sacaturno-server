@@ -22,6 +22,10 @@ const SCreateBusiness = async (businessData: IBusiness) => {
   if (businessExists.length > 0) {
     return "BUSINESS_EXISTS";
   }
+  const slugExists = await BusinessModel.find({ slug: businessData.slug });
+  if (slugExists.length === 0) {
+    return "SLUG_EXISTS";
+  }
   // CREATE BUSINESS
   const createdBusiness = await BusinessModel.create(businessData);
 
@@ -200,7 +204,7 @@ const SEditScheduleAutomationParams = async (req: Request) => {
     const businessData = await BusinessModel.findById(req.params.businessID);
     // buscar todos los turnos desde la fecha de hoy y borrarlos
     const deleteFutureAppointments = await AppointmentModel.deleteMany({
-      start: { $gte: dayjs().startOf("day").toDate() },
+      //start: { $gte: dayjs().startOf("day").toDate() },
       businessID: req.params.businessID,
       status: "unbooked",
     });
@@ -208,7 +212,6 @@ const SEditScheduleAutomationParams = async (req: Request) => {
     // generar nuevos turnos con los parametros nuevos
     if (businessData) await generateAppointments(businessData);
   }
-
 
   // guardar datos de agenda y regenerar turnos al guardar cambios estando automaticSchedule desactivado
   // comparar el campo automaticSchedule
@@ -228,7 +231,7 @@ const SEditScheduleAutomationParams = async (req: Request) => {
 
     // buscar todos los turnos desde la fecha de hoy y borrarlos
     const deleteFutureAppointments = await AppointmentModel.deleteMany({
-      start: { $gte: dayjs().startOf("day").toDate() },
+      //start: { $gte: dayjs().startOf("day").toDate() },
       businessID: req.params.businessID,
       status: "unbooked",
     });

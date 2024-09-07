@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { IBusiness } from "../interfaces/business.interface";
 import { Schema, Types, model, Model } from "mongoose";
 
@@ -49,7 +50,7 @@ const BusinessSchema = new Schema<IBusiness>(
     scheduleEnd: {
       type: Date,
       required: false,
-      default: new Date()
+      default: dayjs().startOf('day').toDate()
     },
     automaticSchedule: {
       type: Boolean,

@@ -25,7 +25,7 @@ export const handleScheduleAutomation = async () => {
     const subscriptionData = await SubscriptionModel.findOne({
       businessID: businessData._id,
     });
-    if (subscriptionData?.subscriptionType === "SC_EXPIRED") return;
+    if (subscriptionData?.subscriptionType === "SC_EXPIRED") continue;
 
     // verifica si hoy hay que crear turnos
     const dayDifference = dayjs(businessData.scheduleEnd).diff(
@@ -33,6 +33,14 @@ export const handleScheduleAutomation = async () => {
       "day",
       true
     );
+    console.log(
+      businessData.name,
+      dayDifference,
+      businessData.scheduleAnticipation
+    );
+    if (dayDifference <= businessData.scheduleAnticipation) {
+      console.log(businessData.name, " crear turnos");
+    }
     if (dayDifference <= businessData.scheduleAnticipation) {
       // buscar todos los turnos desde la fecha de hoy y borrarlos
       await AppointmentModel.deleteMany({
@@ -50,7 +58,7 @@ export const handleScheduleAutomation = async () => {
       const newScheduleStartDate = dayjs(businessData.scheduleEnd);
 
       // POR CADA DIA A CREAR DESDE EL DIA DE RENOVACIÓN DE TURNOS, VERIFICAR QUE TURNOS TIENEN ESE DAYNUMBER Y CREAR TURNOS PARA CADA UNO
-      for (let day = 0; day < businessData.scheduleDaysToCreate; day++) {
+      for (let day = 1; day < businessData.scheduleDaysToCreate + 1; day++) {
         // OBTENER DIA Y MES DEL DIA DE TURNOS A CREAR
         const dayToCreateDateObj = dayjs(newScheduleStartDate).add(day, "day");
         const dayToCreateNumber = Number(dayjs(dayToCreateDateObj).format("d"));
@@ -90,19 +98,19 @@ export const handleScheduleAutomation = async () => {
           await AppointmentModel.create(appointmentObj);
         });
       }
+
+      // a scheduleEnd, sumarle scheduleDaysToCreate y actualizar scheduleEnd en businessmodel
+      console.log("prevScheduleEnd", businessData.scheduleEnd);
+
+      const nextScheduleEnd = dayjs(businessData.scheduleEnd)
+        .add(businessData.scheduleDaysToCreate, "day")
+        .toDate();
+      console.log("nextScheduleEnd", nextScheduleEnd);
+
+      await BusinessModel.findByIdAndUpdate(
+        { _id: businessData._id },
+        { scheduleEnd: nextScheduleEnd }
+      );
     }
-
-    // a scheduleEnd, sumarle scheduleDaysToCreate y actualizar scheduleEnd en businessmodel
-    console.log("businessData.scheduleEnd", businessData.scheduleEnd);
-
-    const nextScheduleEnd = dayjs(businessData.scheduleEnd)
-      .add(businessData.scheduleDaysToCreate, "day")
-      .toDate();
-    console.log("nextScheduleEnd", nextScheduleEnd);
-
-    await BusinessModel.findByIdAndUpdate(
-      { _id: businessData._id },
-      { scheduleEnd: nextScheduleEnd }
-    );
   }
 };
