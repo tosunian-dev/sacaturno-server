@@ -23,7 +23,7 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     return "BUSINESS_EXISTS";
   }
   const slugExists = await BusinessModel.find({ slug: businessData.slug });
-  if (slugExists.length === 0) {
+  if (slugExists.length > 0) {
     return "SLUG_EXISTS";
   }
   // CREATE BUSINESS
