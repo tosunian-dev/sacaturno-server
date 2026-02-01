@@ -30,6 +30,12 @@ const UserSchema = new Schema<IUser>(
       default: false,
       required: false,
     },
+    isFirstLogin: {
+      type: Boolean,
+      default: true,
+      required: false,
+    },
+
   },
   {
     timestamps: true,

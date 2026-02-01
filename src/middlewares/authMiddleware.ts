@@ -8,6 +8,7 @@ const checkAuth = async (
   next: NextFunction
 ) => {
   try {
+    console.log('Auth Middleware: Checking authorization header', req.headers.authorization);
     if (req.headers.authorization === undefined) {
       return res.status(401).send("TOKEN_NOT_GIVEN");
     }

@@ -10,6 +10,7 @@ import {
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
   SGetUserByEmail,
+  SUpdateFirstLoginStatus,
 } from "../services/userServices";
 import { serialize } from "cookie";
 import fs from "fs";
@@ -27,10 +28,7 @@ const loginUser = async ({ body }: Request, res: Response) => {
         sameSite: "lax",
         maxAge: 1000 * 60 * 60 * 24 * 30,
         path: "/",
-        domain:
-          "http://127.0.0.1:3000" ||
-          "https://sacaturno.com.ar" ||
-          "https://www.sacaturno.com.ar",
+        domain: process.env.COOKIE_DOMAIN || "sacaturno.com.ar",
       });
       res.setHeader("Set-Cookie", serializedToken);
       res.send({ response_data });
@@ -134,6 +132,16 @@ const updatePasswordOnRecovery = async (req: Request, res: Response) => {
   }
 };
 
+const updateFirstLoginStatus = async (req: Request, res: Response) => {
+  try {
+    const {userID} = req.params;
+    const response_data = await SUpdateFirstLoginStatus({userID, isFirstLogin: false});
+    res.send(response_data);
+  } catch (error) {
+    handleError(res, "ERROR_UPDATE_FIRST_LOGIN_STATUS");
+  }
+}
+
 export {
   getUser,
   createUser,
@@ -144,5 +152,6 @@ export {
   verifyConfirmToken,
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
-  getUserByEmail
+  getUserByEmail,
+  updateFirstLoginStatus
 };

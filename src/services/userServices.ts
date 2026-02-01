@@ -24,6 +24,7 @@ const SSendConfirmationEmail = async (userData: IUser) => {
   if (userData._id !== undefined) {
     const token = jwtGen(userData._id);
     const resend = new Resend(process.env.RESEND_KEY);
+    // SEND EMAIL WITH RESEND
     const { error } = await resend.emails.send({
       from: "SacaTurno <noresponder@sacaturno.com.ar>",
       to: [userData.email],
@@ -209,6 +210,7 @@ const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
     if (user) {
       const token = jwtGen(params.ownerID);
       const resend = new Resend(process.env.RESEND_KEY);
+      // SEND EMAIL WITH RESEND
       const { error } = await resend.emails.send({
         from: "SacaTurno <noresponder@sacaturno.com.ar>",
         to: [user.email],
@@ -309,6 +311,16 @@ const SUpdatePasswordOnRecovery = async (req: Request) => {
   );
 };
 
+const SUpdateFirstLoginStatus = async (params: {userID: string, isFirstLogin: boolean}) => {
+  const updatedUser = await UserModel.findOneAndUpdate(
+    { _id: params.userID },
+    { isFirstLogin: params.isFirstLogin },
+    { new: true }
+  );
+  console.log('Updated first login status:', updatedUser);
+  return updatedUser;
+}
+
 export {
   SCreateUser,
   SGetUser,
@@ -318,5 +330,6 @@ export {
   SVerifyConfirmToken,
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
-  SGetUserByEmail
+  SGetUserByEmail,
+  SUpdateFirstLoginStatus
 };

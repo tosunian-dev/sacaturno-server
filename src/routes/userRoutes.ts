@@ -9,7 +9,8 @@ import {
   verifyConfirmToken,
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
-  getUserByEmail
+  getUserByEmail,
+  updateFirstLoginStatus
 } from "../controllers/userController";
 import multerMiddleware from "../middlewares/multerMiddleware";
 import { checkAuth } from "../middlewares/authMiddleware";
@@ -33,5 +34,8 @@ router.post("/user/verify/:token", verifyConfirmToken);
 router.post("/user/password/recovery/:ownerID", sendPasswordRecoveryEmail);
 // UPDATE PASSWORD ON RECOVERY MAIL CONFIRMATION
 router.post("/user/password/recovery/set/:token", updatePasswordOnRecovery);
+
+// UPDATE IS FIRST LOGIN
+router.put("/user/firstlogin/:userID", checkAuth, updateFirstLoginStatus);
 
 export default router;
