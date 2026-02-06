@@ -35,7 +35,7 @@ router.post("/user/password/recovery/:ownerID", sendPasswordRecoveryEmail);
 // UPDATE PASSWORD ON RECOVERY MAIL CONFIRMATION
 router.post("/user/password/recovery/set/:token", updatePasswordOnRecovery);
 
-// UPDATE IS FIRST LOGIN
+// UPDATE USER'S FIRST LOGIN -- SET isFirstLogin TO FALSE 
 router.put("/user/firstlogin/:userID", checkAuth, updateFirstLoginStatus);
 
 export default router;

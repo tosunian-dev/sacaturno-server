@@ -317,7 +317,6 @@ const SUpdateFirstLoginStatus = async (params: {userID: string, isFirstLogin: bo
     { isFirstLogin: params.isFirstLogin },
     { new: true }
   );
-  console.log('Updated first login status:', updatedUser);
   return updatedUser;
 }
 
