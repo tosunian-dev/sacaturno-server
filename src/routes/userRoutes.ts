@@ -41,7 +41,7 @@ router.put("/user/firstlogin/:userID", checkAuth, updateFirstLoginStatus);
 
 // get services by business ID in public views
 router.get(
-  "/business/service/get/:businessID",
+  "/user/business/service/get/:businessID",
   getServicesByBusinessID
 );
 
