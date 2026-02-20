@@ -11,6 +11,7 @@ import {
   SUpdatePasswordOnRecovery,
   SGetUserByEmail,
   SUpdateFirstLoginStatus,
+  SGetServicesByBusinessID,
 } from "../services/userServices";
 import { serialize } from "cookie";
 import fs from "fs";
@@ -142,6 +143,18 @@ const updateFirstLoginStatus = async (req: Request, res: Response) => {
   }
 }
 
+const getServicesByBusinessID = async (req: Request, res: Response) => {
+  try {
+    const servicesData = await SGetServicesByBusinessID(req);
+    if (!servicesData) {
+      return res.send("SERVICES_NOT_FOUND");
+    }
+    res.send(servicesData);
+  } catch (error) {
+    handleError(res, "ERROR_GET_SERVICES");
+  }
+};
+
 export {
   getUser,
   createUser,
@@ -153,5 +166,6 @@ export {
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
   getUserByEmail,
-  updateFirstLoginStatus
+  updateFirstLoginStatus,
+  getServicesByBusinessID
 };

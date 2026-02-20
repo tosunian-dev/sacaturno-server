@@ -7,6 +7,7 @@ import fs from "fs";
 import { Resend } from "resend";
 import { JwtPayload } from "jsonwebtoken";
 import BusinessModel from "../models/userModel";
+import ServiceModel from "../models/serviceModel";
 
 const SCreateUser = async (userData: IUser) => {
   const userExists = await UserModel.find({ email: userData.email });
@@ -320,6 +321,13 @@ const SUpdateFirstLoginStatus = async (params: {userID: string, isFirstLogin: bo
   return updatedUser;
 }
 
+const SGetServicesByBusinessID = async ({ params }: Request) => {
+  const servicesData = await ServiceModel.find({
+    businessID: params.businessID,
+  });
+  return servicesData;
+};
+
 export {
   SCreateUser,
   SGetUser,
@@ -330,5 +338,6 @@ export {
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
   SGetUserByEmail,
-  SUpdateFirstLoginStatus
+  SUpdateFirstLoginStatus,
+  SGetServicesByBusinessID
 };

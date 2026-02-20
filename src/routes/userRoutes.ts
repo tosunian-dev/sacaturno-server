@@ -10,7 +10,8 @@ import {
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
   getUserByEmail,
-  updateFirstLoginStatus
+  updateFirstLoginStatus,
+  getServicesByBusinessID
 } from "../controllers/userController";
 import multerMiddleware from "../middlewares/multerMiddleware";
 import { checkAuth } from "../middlewares/authMiddleware";
@@ -37,5 +38,12 @@ router.post("/user/password/recovery/set/:token", updatePasswordOnRecovery);
 
 // UPDATE USER'S FIRST LOGIN -- SET isFirstLogin TO FALSE 
 router.put("/user/firstlogin/:userID", checkAuth, updateFirstLoginStatus);
+
+// get services by business ID in public views
+router.get(
+  "/business/service/get/:businessID",
+  getServicesByBusinessID
+);
+
 
 export default router;
