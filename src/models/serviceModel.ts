@@ -24,6 +24,11 @@ const ServiceSchema = new Schema<IService>(
       type: Number,
       required: true,
     },
+    duration: {
+      type: Number,
+      required: false,
+      default: 30,
+    },
   },
   {
     timestamps: true,

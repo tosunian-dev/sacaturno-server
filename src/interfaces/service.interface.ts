@@ -5,4 +5,5 @@ export interface IService {
   ownerID?: string;
   price: number;
   description: string;
+  duration?: number;
 }

@@ -178,6 +178,7 @@ const SEditServiceData = async (serviceData: {
   name: string;
   description: string;
   price: number;
+  duration?: number;
 }) => {
   const editedService = await ServiceModel.findByIdAndUpdate(
     { _id: serviceData.id },
