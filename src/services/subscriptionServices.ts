@@ -79,6 +79,7 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
         expiracyDate: body.expiracyDate,
         subscriptionType: body.subscriptionType,
         expiracyMonth: dayjs().month() + 2,
+        expiracyYear: dayjs().year(),
         expiracyDay: dayjs().date(),
       },
       { new: true }

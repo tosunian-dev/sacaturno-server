@@ -45,6 +45,7 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     paymentDate: paymentDate.toDate(),
     expiracyDate: expDate.toDate(),
     expiracyMonth: dayjs(expDate).month() + 1,
+    expiracyYear: dayjs(expDate).year(),
     expiracyDay: dayjs(expDate).date(),
   };
   const subscriptionDetails = await SubscriptionModel.create(subDetails);
