@@ -25,9 +25,9 @@ connectDB().then(() => {
 });
 
 // PROGRAMMED SUBSCRIPTION EXPIRACY HANDLER
-cron.schedule(" 05 3 * * * ", () => {
+cron.schedule("50 15 * * *", () => {
   handlePlanExpiracy();
-});
+}, { timezone: "America/Argentina/Buenos_Aires" });
 
 // PROGRAMMED SCHEDULE AUTOMATIC APPOINTMENT CREATION HANDLER
 cron.schedule(" 10 3 * * * ", () => {
