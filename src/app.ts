@@ -25,7 +25,7 @@ connectDB().then(() => {
 });
 
 // PROGRAMMED SUBSCRIPTION EXPIRACY HANDLER
-cron.schedule("50 15 * * *", () => {
+cron.schedule("50 0 * * *", () => {
   handlePlanExpiracy();
 }, { timezone: "America/Argentina/Buenos_Aires" });
 
