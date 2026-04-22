@@ -11,6 +11,7 @@ import cron from "node-cron";
 import { Request } from "express";
 import { handleScheduleAutomation } from "./utils/scheduleAutomation";
 import scheduleRoutes from "./routes/scheduleRoutes";
+import depositRoutes from "./routes/depositRoutes";
 
 // SERVER INICIALIZATION
 const app = express();
@@ -35,9 +36,16 @@ cron.schedule(" 10 3 * * * ", () => {
 });
 
 // CORS SETTINGS
+const allowedOrigins = [
+  "https://sacaturno.com.ar",
+  "https://www.sacaturno.com.ar",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean) as string[];
+
 app.use(
   cors<Request>({
-    origin: ["https://sacaturno.com.ar", "https://www.sacaturno.com.ar", "http://localhost:3000"],
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -50,3 +58,4 @@ app.use("/api", appointmentRoutes);
 app.use("/api", businessRoutes);
 app.use("/api", subscriptionRoutes);
 app.use("/api", scheduleRoutes);
+app.use("/api", depositRoutes)
