@@ -39,6 +39,7 @@ cron.schedule(" 10 3 * * * ", () => {
 const allowedOrigins = [
   "https://sacaturno.com.ar",
   "https://www.sacaturno.com.ar",
+  "https://sacaturno-dev.netlify.app",
   "http://localhost:3000",
   process.env.FRONTEND_URL,
 ].filter(Boolean) as string[];
