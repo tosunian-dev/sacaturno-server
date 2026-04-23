@@ -36,17 +36,24 @@ cron.schedule(" 10 3 * * * ", () => {
 });
 
 // CORS SETTINGS
-const allowedOrigins = [
+const allowedOrigins = new Set([
   "https://sacaturno.com.ar",
   "https://www.sacaturno.com.ar",
   "https://sacaturno-dev.netlify.app",
   "http://localhost:3000",
-  process.env.FRONTEND_URL,
-].filter(Boolean) as string[];
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+]);
 
 app.use(
   cors<Request>({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // allow server-to-server requests (no origin) and listed origins
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
     credentials: true,
   })
 );
