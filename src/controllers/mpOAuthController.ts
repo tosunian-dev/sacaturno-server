@@ -26,7 +26,7 @@ const oauthCallback = async (req: Request, res: Response) => {
 
   if (error || !code || !businessID) {
     return res.redirect(
-      `${process.env.FRONTEND_URL}/admin/business?mp=error`
+      `${process.env.FRONTEND_URL}/admin/business/services?mp=error`
     );
   }
 
@@ -38,13 +38,13 @@ const oauthCallback = async (req: Request, res: Response) => {
 
     if (result === "BUSINESS_NOT_FOUND") {
       return res.redirect(
-        `${process.env.FRONTEND_URL}/admin/business?mp=error`
+        `${process.env.FRONTEND_URL}/admin/business/services?mp=error`
       );
     }
 
-    res.redirect(`${process.env.FRONTEND_URL}/admin/business?mp=success`);
+    res.redirect(`${process.env.FRONTEND_URL}/admin/business/services?mp=success`);
   } catch (err) {
-    res.redirect(`${process.env.FRONTEND_URL}/admin/business?mp=error`);
+    res.redirect(`${process.env.FRONTEND_URL}/admin/business/services?mp=error`);
   }
 };
 
