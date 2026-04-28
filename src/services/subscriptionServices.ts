@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import SubscriptionModel from "../models/subscriptionModel";
+import BusinessModel from "../models/businessModel";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import dayjs from "dayjs";
 import PlanPaymentModel from "../models/planPaymentModel";
@@ -84,7 +85,10 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
       },
       { new: true }
     );
-    console.log("updatedSub", updated);
+    await BusinessModel.findOneAndUpdate(
+      { _id: body.businessID },
+      { subscription: body.subscriptionType }
+    );
     try {
       const planPayment = await PlanPaymentModel.create({
         price: process.env.FULL_PLAN_PRICE,
