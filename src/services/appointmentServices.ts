@@ -95,25 +95,39 @@ const SBookAppointment = async (data: IAppointment) => {
 
 const SClientEmailBookedAppointment = async (
   appointmentData: IAppointment,
-  businessData: IBusiness
+  businessData: IBusiness,
+  depositAmount?: number
 ) => {
   const appointmentDate = dayjs(appointmentData.start)
     .tz("America/Argentina/Buenos_Aires")
     .format("dddd D [de] MMMM [|] HH:mm [hs]");
   const resend = new Resend(process.env.RESEND_KEY);
+
+  const depositSection = depositAmount && depositAmount > 0
+    ? `<div style="margin-top:16px;padding:12px 16px;background-color:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+        <b style="font-size:13px;color:#166534;display:block;margin-bottom:8px;">&#10003; Seña abonada via Mercado Pago</b>
+        <div style="display:inline-grid;">
+          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Monto de la seña: </b>
+          <span style="margin-bottom:8px;font-size:12px;">$ ${depositAmount.toLocaleString("es-AR")}</span>
+          <b style="font-size:12px;line-height:1;text-transform:uppercase;">ID de pago: </b>
+          <span style="font-size:12px;">${appointmentData.mpPaymentID ?? "-"}</span>
+        </div>
+      </div>`
+    : "";
+
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
     subject: "Reserva de turno",
     html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     <html dir="ltr" lang="en">
-    
+
       <head>
         <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
       </head>
       <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Acabas de reservar un turno en ${businessData.name} <div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
       </div>
-    
+
       <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
         <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
           <tbody>
@@ -149,21 +163,24 @@ const SClientEmailBookedAppointment = async (
                       <td>
                         <p style="font-size:14px;line-height:1.5;margin:16px 0;">Hola ${appointmentData.name}!,</p>
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Reservaste un turno para el dia <b>${appointmentDate}</b> para el servicio de <b>${appointmentData.service}</b> en <b>${businessData.name}</b> con los siguientes datos:</p>
-    
+
                         <div style="display:inline-grid;">
-                      
+
                           <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido: </b>
                           <span style="margin-bottom:10px;font-size:12px;">${appointmentData.name}</span>
-                                                    
+
                           <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono: </b>
-                          <span style="margin-bottom:10px;font-size:12px;">${appointmentData.phone}</span>                         
-                        
+                          <span style="margin-bottom:10px;font-size:12px;">${appointmentData.phone}</span>
+
                           <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo: </b>
                           <span style="font-size:12px;">${appointmentData.email}<span/>
 
-                        </div>  
+                        </div>
+
+                        ${depositSection}
+
                         <p style="font-size:14px;line-height:1.5;margin:16px 0">Si querés cancelar la reserva o ingresaste algun dato erróneo, contactate con la empresa al siguiente número: <b>${businessData.phone}<b/></p>
-    
+
                       </td>
                     </tr>
                   </tbody>
@@ -176,7 +193,7 @@ const SClientEmailBookedAppointment = async (
           <tbody>
             <tr>
               <td>
-    
+
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
                   <tbody style="width:100%">
                     <tr style="width:100%">
@@ -189,7 +206,7 @@ const SClientEmailBookedAppointment = async (
           </tbody>
         </table>
       </body>
-    
+
     </html>`,
   });
 
@@ -200,25 +217,39 @@ const SClientEmailBookedAppointment = async (
 
 const SBusinessEmailBookedAppointment = async (
   appointmentData: IAppointment,
-  businessData: IBusiness
+  businessData: IBusiness,
+  depositAmount?: number
 ) => {
   const appointmentDate = dayjs(appointmentData.start)
     .tz("America/Argentina/Buenos_Aires")
     .format("dddd D [de] MMMM [|] HH:mm [hs]");
   const resend = new Resend(process.env.RESEND_KEY);
+
+  const depositSection = depositAmount && depositAmount > 0
+    ? `<div style="margin-top:16px;padding:12px 16px;background-color:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+        <b style="font-size:13px;color:#166534;display:block;margin-bottom:8px;">&#10003; Seña recibida via Mercado Pago</b>
+        <div style="display:inline-grid;">
+          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Monto de la seña: </b>
+          <span style="margin-bottom:8px;font-size:12px;">$ ${depositAmount.toLocaleString("es-AR")}</span>
+          <b style="font-size:12px;line-height:1;text-transform:uppercase;">ID de pago MP: </b>
+          <span style="font-size:12px;">${appointmentData.mpPaymentID ?? "-"}</span>
+        </div>
+      </div>`
+    : "";
+
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [businessData.email],
     subject: "Nueva reserva",
     html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
     <html dir="ltr" lang="en">
-    
+
       <head>
         <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
       </head>
       <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Recibiste una reserva en ${businessData.name}<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
       </div>
-    
+
       <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
         <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
           <tbody>
@@ -252,28 +283,30 @@ const SBusinessEmailBookedAppointment = async (
                   <tbody>
                     <tr>
                       <td>
-    
+
                         <p style="font-size:14px;line-height:1.5;margin:16px 0;">Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:</p>
-    
+
                         <div style="display:inline-grid;">
-                          
+
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
-                          
+
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Servicio </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentData.service}</span>
-                          
+
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Nombre y apellido </b>
                             <span style="margin-bottom:8px;font-size:12px;">${appointmentData.name}</span>
-                         
+
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>                         
-                          
+                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>
+
                             <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo </b>
-                            <span style="font-size:12px;">${appointmentData.email}<span/> 
-                          
-                        </div>  
-    
+                            <span style="font-size:12px;">${appointmentData.email}<span/>
+
+                        </div>
+
+                        ${depositSection}
+
                       </td>
                     </tr>
                   </tbody>
@@ -286,7 +319,7 @@ const SBusinessEmailBookedAppointment = async (
           <tbody>
             <tr>
               <td>
-    
+
                 <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
                   <tbody style="width:100%">
                     <tr style="width:100%">
@@ -299,7 +332,7 @@ const SBusinessEmailBookedAppointment = async (
           </tbody>
         </table>
       </body>
-    
+
     </html>`,
   });
 
@@ -485,6 +518,36 @@ const SGetDaysAndAppointmentsByBusinessID = async ({ params }: Request) => {
   return {days, appointments};
 };
 
+const SGetDashboardStats = async ({ params }: Request) => {
+  const { businessID } = params;
+  const tz = "America/Argentina/Buenos_Aires";
+
+  const now = dayjs().tz(tz);
+  const todayStart = now.startOf("day").toDate();
+  const todayEnd = now.endOf("day").toDate();
+  const weekStart = now.startOf("week").toDate();
+  const weekEnd = now.endOf("week").toDate();
+  const monthStart = now.startOf("month").toDate();
+  const monthEnd = now.endOf("month").toDate();
+
+  const nowDate = now.toDate();
+
+  const [todayRemainingApps, weekBookedApps, monthBookedApps] = await Promise.all([
+    AppointmentModel.find({ businessID, status: "booked", start: { $gte: nowDate, $lte: todayEnd } }),
+    AppointmentModel.find({ businessID, status: "booked", start: { $gte: weekStart, $lte: weekEnd } }),
+    AppointmentModel.find({ businessID, status: "booked", start: { $gte: monthStart, $lte: monthEnd } }),
+  ]);
+
+  const monthRevenue = monthBookedApps.reduce((sum, a) => sum + (a.price || 0), 0);
+
+  return {
+    todayRemaining: todayRemainingApps.length,
+    weekBooked: weekBookedApps.length,
+    monthBooked: monthBookedApps.length,
+    monthRevenue,
+  };
+};
+
 export {
   SCreateAppointment,
   SBookAppointment,
@@ -496,5 +559,8 @@ export {
   SGetPublicAppsByBusinessID,
   SGetTodayAppointmentsByBusinessID,
   SCreateAllDayAppointments,
-  SGetDaysAndAppointmentsByBusinessID
+  SGetDaysAndAppointmentsByBusinessID,
+  SClientEmailBookedAppointment,
+  SBusinessEmailBookedAppointment,
+  SGetDashboardStats,
 }

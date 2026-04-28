@@ -6,4 +6,5 @@ export interface IService {
   price: number;
   description: string;
   duration?: number;
+  depositAmount?: number; // 0 o undefined = sin seña
 }

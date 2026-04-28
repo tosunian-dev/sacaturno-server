@@ -62,6 +62,23 @@ const BusinessSchema = new Schema<IBusiness>(
       required: false,
       default: "SC_FREE",
     },
+    mpAccessToken: {
+      type: String,
+      required: false,
+      default: null,
+      select: false,
+    },
+    mpRefreshToken: {
+      type: String,
+      required: false,
+      default: null,
+      select: false,
+    },
+    mpLinked: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
   },
   {
     timestamps: true,

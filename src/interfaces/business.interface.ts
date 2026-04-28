@@ -13,4 +13,7 @@ export interface IBusiness {
   scheduleAnticipation: number;
   scheduleDaysToCreate: number;
   automaticSchedule: boolean;
+  mpAccessToken?: string | null;
+  mpRefreshToken?: string | null;
+  mpLinked?: boolean;
 }

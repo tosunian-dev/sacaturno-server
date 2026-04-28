@@ -12,6 +12,7 @@ import {
   SGetTodayAppointmentsByBusinessID,
   SCreateAllDayAppointments,
   SGetDaysAndAppointmentsByBusinessID,
+  SGetDashboardStats,
 } from "../services/appointmentServices";
 
 const createAppointment = async ({ body }: Request, res: Response) => {
@@ -107,6 +108,15 @@ const createAllDayAppointments = async ({ body }: Request, res: Response) => {
   }
 };
 
+const getDashboardStats = async (req: Request, res: Response) => {
+  try {
+    const stats = await SGetDashboardStats(req);
+    res.send(stats);
+  } catch (error) {
+    handleError(res, "ERROR_GET_DASHBOARD_STATS");
+  }
+};
+
 export {
   createAppointment,
   bookAppointment,
@@ -118,4 +128,5 @@ export {
   getPublicAppsByBusinessID,
   getTodayAppointmentsByBusinessID,
   createAllDayAppointments,
+  getDashboardStats,
 };

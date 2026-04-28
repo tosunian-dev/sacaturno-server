@@ -11,6 +11,7 @@ import cron from "node-cron";
 import { Request } from "express";
 import { handleScheduleAutomation } from "./utils/scheduleAutomation";
 import scheduleRoutes from "./routes/scheduleRoutes";
+import depositRoutes from "./routes/depositRoutes";
 
 // SERVER INICIALIZATION
 const app = express();
@@ -35,9 +36,24 @@ cron.schedule(" 10 3 * * * ", () => {
 });
 
 // CORS SETTINGS
+const allowedOrigins = new Set([
+  "https://sacaturno.com.ar",
+  "https://www.sacaturno.com.ar",
+  "https://sacaturno-dev.netlify.app",
+  "http://localhost:3000",
+  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+]);
+
 app.use(
   cors<Request>({
-    origin: ["https://sacaturno.com.ar", "https://www.sacaturno.com.ar", "http://localhost:3000"],
+    origin: (origin, callback) => {
+      // allow server-to-server requests (no origin) and listed origins
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin '${origin}' not allowed`));
+      }
+    },
     credentials: true,
   })
 );
@@ -50,3 +66,4 @@ app.use("/api", appointmentRoutes);
 app.use("/api", businessRoutes);
 app.use("/api", subscriptionRoutes);
 app.use("/api", scheduleRoutes);
+app.use("/api", depositRoutes)
