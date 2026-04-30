@@ -57,7 +57,23 @@ const AppointmentSchema = new Schema<IAppointment>(
     price: {
       type: Number,
       required: true
-    }
+    },
+    depositStatus: {
+      type: String,
+      enum: ["none", "pending", "paid", "failed"],
+      required: false,
+      default: "none",
+    },
+    mpPaymentID: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    mpPreferenceID: {
+      type: String,
+      required: false,
+      default: null,
+    },
   },
   {
     timestamps: true,

@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import SubscriptionModel from "../models/subscriptionModel";
+import BusinessModel from "../models/businessModel";
 import UserModel from "../models/userModel";
 import { Resend } from "resend";
 
@@ -36,6 +37,10 @@ export const handlePlanExpiracy = async () => {
       const expiredSubscription = await SubscriptionModel.findByIdAndUpdate(
         subscriptions[i]._id,
         { subscriptionType: "SC_EXPIRED" }
+      );
+      await BusinessModel.findOneAndUpdate(
+        { _id: expiredSubscription?.businessID },
+        { subscription: "SC_EXPIRED" }
       );
       const ownerData = await UserModel.findOne({
         _id: expiredSubscription?.ownerID,

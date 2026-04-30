@@ -12,4 +12,7 @@ export interface IAppointment {
   service: string;
   price: number;
   description: string;
+  depositStatus?: "none" | "pending" | "paid" | "failed";
+  mpPaymentID?: string | null;
+  mpPreferenceID?: string | null;
 }

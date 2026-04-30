@@ -10,6 +10,7 @@ import {
   getPublicAppsByBusinessID,
   getTodayAppointmentsByBusinessID,
   createAllDayAppointments,
+  getDashboardStats,
 } from "../controllers/appointmentController";
 import { checkAuth } from "../middlewares/authMiddleware";
 
@@ -40,5 +41,7 @@ router.get(
   "/appointment/get/today/:businessID",
   getTodayAppointmentsByBusinessID
 );
+/** GET DASHBOARD STATS BY BUSINESS ID */
+router.get("/appointment/stats/:businessID", checkAuth, getDashboardStats);
 
 export default router;

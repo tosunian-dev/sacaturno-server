@@ -29,6 +29,11 @@ const ServiceSchema = new Schema<IService>(
       required: false,
       default: 30,
     },
+    depositAmount: {
+      type: Number,
+      required: false,
+      default: 0,
+    },
   },
   {
     timestamps: true,
