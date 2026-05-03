@@ -13,7 +13,8 @@ import {
   getBusinessBySlug,
   getBusinessByEmail,
   editService,
-  editScheduleAutomationParams
+  editScheduleAutomationParams,
+  getAllBusinessSlugs,
 } from "../controllers/businessController";
 import { checkAuth } from "../middlewares/authMiddleware";
 import multerMiddleware from "../middlewares/multerMiddleware";
@@ -59,5 +60,7 @@ router.put("/business/service/edit", checkAuth, editService);
 router.delete("/business/service/delete/:serviceID", checkAuth, deleteService);
 
 router.put("/business/schedule/parameters/:businessID", checkAuth, editScheduleAutomationParams);
+
+router.get("/business/sitemap", getAllBusinessSlugs);
 
 export default router;

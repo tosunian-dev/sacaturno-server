@@ -14,7 +14,8 @@ import {
   SGetBusinessBySlug,
   SGetBusinessByEmail,
   SEditServiceData,
-  SEditScheduleAutomationParams
+  SEditScheduleAutomationParams,
+  SGetAllBusinessSlugs,
 } from "../services/businessServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
@@ -182,6 +183,15 @@ const editScheduleAutomationParams = async (req: Request, res: Response) => {
   }
 };
 
+const getAllBusinessSlugs = async (_req: Request, res: Response) => {
+  try {
+    const businesses = await SGetAllBusinessSlugs();
+    res.send(businesses);
+  } catch (error) {
+    handleError(res, "ERROR_GET_BUSINESSES");
+  }
+};
+
 export {
   createBusiness,
   getBusinessByName,
@@ -196,5 +206,6 @@ export {
   getBusinessBySlug,
   getBusinessByEmail,
   editService,
-  editScheduleAutomationParams
+  editScheduleAutomationParams,
+  getAllBusinessSlugs,
 };

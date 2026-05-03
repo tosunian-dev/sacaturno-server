@@ -149,6 +149,10 @@ const SGetBusinessByEmail = async ({ params }: Request) => {
   return businessData;
 };
 
+const SGetAllBusinessSlugs = async () => {
+  return await BusinessModel.find({}, { slug: 1, updatedAt: 1, _id: 0 }).lean();
+};
+
 const SGetServicesByBusinessID = async ({ params }: Request) => {
   const servicesData = await ServiceModel.find({
     businessID: params.businessID,
@@ -259,4 +263,5 @@ export {
   SGetBusinessByEmail,
   SEditServiceData,
   SEditScheduleAutomationParams,
+  SGetAllBusinessSlugs,
 };
