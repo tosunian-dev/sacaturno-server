@@ -7,7 +7,6 @@ import { Resend } from "resend";
 export const handlePlanExpiracy = async () => {
   // GET CURRENT DATE
   const today = dayjs();
-  const startOfDay = today.startOf("day").toDate();
   const endOfDay = today.endOf("day").toDate();
 
   // VERIFY FUNCTION EXECUTION
@@ -15,12 +14,11 @@ export const handlePlanExpiracy = async () => {
     `EXECUTING SUBSCRIPTION EXPIRACY FUNCTION ON DATE ${today.format("DD/MM/YYYY")}`
   );
 
-  // GET SUBSCRIPTIONS TO EXPIRE ON CURRENT DATE
+  // GET SUBSCRIPTIONS THAT EXPIRED BEFORE TODAY
+  // $lte to catch expired subscriptions that could be missed to update by a cron job failure due to server downtime
   const subscriptions = await SubscriptionModel.find({
-    expiracyDate: {
-      $gte: startOfDay,
-      $lte: endOfDay
-    }
+    expiracyDate: { $lte: endOfDay },
+    subscriptionType: { $ne: "SC_EXPIRED" },
   });
 
   if (subscriptions.length === 0) {
@@ -32,8 +30,12 @@ export const handlePlanExpiracy = async () => {
     `SUBSCRIPTION EXPIRACY FUNCTION EXECUTED SUCCESSFULLY ON DATE ${today.format("DD/MM/YYYY")}`
   );
   
+  const resend = new Resend(process.env.RESEND_KEY);
+
   for (let i = 0; i < subscriptions.length; i++) {
     try {
+      // findByIdAndUpdate returns the pre-update document (no  new: true )
+      // i read the old subscriptionType here to decide which email to send
       const expiredSubscription = await SubscriptionModel.findByIdAndUpdate(
         subscriptions[i]._id,
         { subscriptionType: "SC_EXPIRED" }
@@ -45,16 +47,17 @@ export const handlePlanExpiracy = async () => {
       const ownerData = await UserModel.findOne({
         _id: expiredSubscription?.ownerID,
       });
+      if (!ownerData) {
+        console.log(`NO OWNER FOUND FOR SUBSCRIPTION ${expiredSubscription?._id} — skipping email`);
+      }
       if (ownerData) {
         if (expiredSubscription?.subscriptionType === "SC_FULL") {
-          const resend = new Resend(process.env.RESEND_KEY);
-          await resend.emails.send({
+          const { error: emailError } = await resend.emails.send({
             from: "SacaTurno <noresponder@sacaturno.com.ar>",
             to: [ownerData.email],
             subject: "Tu suscripción ha vencido",
             html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
         <html dir="ltr" lang="en">
-        
           <head>
             <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
           </head>
@@ -128,11 +131,11 @@ export const handlePlanExpiracy = async () => {
         
               </html>`,
           });
+          if (emailError) console.log("Resend error (SC_FULL):", emailError);
         }
 
         if (expiredSubscription?.subscriptionType === "SC_FREE") {
-          const resend = new Resend(process.env.RESEND_KEY);
-          await resend.emails.send({
+          const { error: emailError } = await resend.emails.send({
             from: "SacaTurno <noresponder@sacaturno.com.ar>",
             to: [ownerData.email],
             subject: "Tu prueba gratuita ha caducado",
@@ -212,12 +215,14 @@ export const handlePlanExpiracy = async () => {
               
               </html>`,
           });
+          if (emailError) console.log("Resend error (SC_FREE):", emailError);
         }
       }
       console.log("EXPIRED SUBSCRIPTION: ", expiredSubscription);
     } catch (error) {
       console.log(
-        `ERROR EXECUTING SUBSCRIPTION EXPIRACY FUNCTION ON DATE ${today.format("DD/MM/YYYY")}`
+        `ERROR EXECUTING SUBSCRIPTION EXPIRACY FUNCTION ON DATE ${today.format("DD/MM/YYYY")}`,
+        error
       );
     }
   }
