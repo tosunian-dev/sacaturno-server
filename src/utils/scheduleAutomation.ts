@@ -21,7 +21,7 @@ export const handleScheduleAutomation = async () => {
   for (let business = 0; business < allBusinesses.length; business++) {
     const businessData = allBusinesses[business];
 
-    // verificar si el plan esta expirado
+    // verificar si el plan esta expirado - sale del for
     const subscriptionData = await SubscriptionModel.findOne({
       businessID: businessData._id,
     });
@@ -44,7 +44,7 @@ export const handleScheduleAutomation = async () => {
     if (dayDifference <= businessData.scheduleAnticipation) {
       // buscar todos los turnos desde la fecha de hoy y borrarlos
       await AppointmentModel.deleteMany({
-        start: { $gte: businessData.scheduleEnd },
+        start: { $gt: businessData.scheduleEnd },
         businessID: businessData._id,
         status: "unbooked",
       });
@@ -70,7 +70,7 @@ export const handleScheduleAutomation = async () => {
         );
 
         // CREAR CADA TURNO DEL DIA
-        appointmentsToCreate.forEach(async (appointment) => {
+        for (const appointment of appointmentsToCreate) {
           // FORMATEAR FECHA PARA CREAR CADA TURNO
           const startTime = dayjs(appointment.start).format("HH:mm");
           const endTime = dayjs(appointment.end).format("HH:mm");
@@ -94,9 +94,13 @@ export const handleScheduleAutomation = async () => {
             name: "",
             status: "unbooked",
           };
-          // ALMACENAR TURNO EN APPOINTMENTS
-          await AppointmentModel.create(appointmentObj);
-        });
+          // ALMACENAR TURNO EN APPOINTMENTS (upsert evita duplicados si la funcion se ejecuta mas de una vez)
+          await AppointmentModel.updateOne(
+            { businessID: appointmentObj.businessID, start: appointmentObj.start },
+            { $setOnInsert: appointmentObj },
+            { upsert: true }
+          );
+        }
       }
 
       // a scheduleEnd, sumarle scheduleDaysToCreate y actualizar scheduleEnd en businessmodel
