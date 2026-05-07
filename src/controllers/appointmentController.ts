@@ -13,6 +13,8 @@ import {
   SCreateAllDayAppointments,
   SGetDaysAndAppointmentsByBusinessID,
   SGetDashboardStats,
+  SGetAnalyticsData,
+  SGetAppointmentHistory,
 } from "../services/appointmentServices";
 
 const createAppointment = async ({ body }: Request, res: Response) => {
@@ -117,6 +119,24 @@ const getDashboardStats = async (req: Request, res: Response) => {
   }
 };
 
+const getAnalyticsData = async (req: Request, res: Response) => {
+  try {
+    const data = await SGetAnalyticsData(req);
+    res.send(data);
+  } catch (error) {
+    handleError(res, "ERROR_GET_ANALYTICS");
+  }
+};
+
+const getAppointmentHistory = async (req: Request, res: Response) => {
+  try {
+    const data = await SGetAppointmentHistory(req);
+    res.send(data);
+  } catch (error) {
+    handleError(res, "ERROR_GET_HISTORY");
+  }
+};
+
 export {
   createAppointment,
   bookAppointment,
@@ -129,4 +149,6 @@ export {
   getTodayAppointmentsByBusinessID,
   createAllDayAppointments,
   getDashboardStats,
+  getAnalyticsData,
+  getAppointmentHistory,
 };
