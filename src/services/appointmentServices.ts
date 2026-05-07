@@ -548,6 +548,84 @@ const SGetDashboardStats = async ({ params }: Request) => {
   };
 };
 
+const SGetAnalyticsData = async ({ params }: Request) => {
+  const { businessID } = params;
+  const tz = "America/Argentina/Buenos_Aires";
+  const now = dayjs().tz(tz);
+
+  const [bookedApps, issuedApps] = await Promise.all([
+    AppointmentModel.find({ businessID, status: "booked" }).sort({ start: 1 }),
+    AppointmentModel.find({ businessID }).select("start").lean(),
+  ]);
+
+  // Start from first appointment month, or 12 months ago if no data
+  const startMonth =
+    bookedApps.length > 0
+      ? dayjs(bookedApps[0].start).tz(tz).startOf("month")
+      : now.subtract(11, "month").startOf("month");
+
+  const endMonth = now.startOf("month");
+  const monthCount = Math.max(endMonth.diff(startMonth, "month") + 1, 1);
+
+  // Build zero-filled buckets for every month in range
+  const buckets = new Map<string, { appointments: number; revenue: number; paidDeposits: number; issuedAppointments: number }>();
+  for (let i = 0; i < monthCount; i++) {
+    const key = startMonth.add(i, "month").format("YYYY-MM");
+    buckets.set(key, { appointments: 0, revenue: 0, paidDeposits: 0, issuedAppointments: 0 });
+  }
+
+  for (const app of bookedApps) {
+    const key = dayjs(app.start).tz(tz).format("YYYY-MM");
+    const bucket = buckets.get(key);
+    if (bucket) {
+      bucket.appointments++;
+      bucket.revenue += app.price ?? 0;
+      if (app.depositStatus === "paid") bucket.paidDeposits++;
+    }
+  }
+
+  for (const app of issuedApps) {
+    const key = dayjs(app.start).tz(tz).format("YYYY-MM");
+    const bucket = buckets.get(key);
+    if (bucket) bucket.issuedAppointments++;
+  }
+
+  const monthlyData = Array.from(buckets.entries()).map(([key, data]) => {
+    const m = dayjs(key + "-01").tz(tz);
+    return {
+      month: m.format("MMMM"),
+      year: m.year(),
+      shortLabel: m.format("MMMM").slice(0, 3),
+      ...data,
+    };
+  });
+
+  const totalRevenue = monthlyData.reduce((s, m) => s + m.revenue, 0);
+  const totalAppointments = monthlyData.reduce((s, m) => s + m.appointments, 0);
+  const totalDeposits = monthlyData.reduce((s, m) => s + m.paidDeposits, 0);
+  const months = monthlyData.length || 1;
+
+  return {
+    monthlyData,
+    summary: {
+      totalRevenue,
+      totalAppointments,
+      totalDeposits,
+      avgMonthlyRevenue: Math.round(totalRevenue / months),
+      avgMonthlyAppointments: Math.round((totalAppointments / months) * 10) / 10,
+    },
+  };
+};
+
+const SGetAppointmentHistory = async ({ params }: Request) => {
+  const { businessID } = params;
+  const appointments = await AppointmentModel.find({ businessID, status: "booked" })
+    .sort({ start: -1 })
+    .select("start end name phone email service price depositStatus")
+    .lean();
+  return appointments;
+};
+
 export {
   SCreateAppointment,
   SBookAppointment,
@@ -563,4 +641,6 @@ export {
   SClientEmailBookedAppointment,
   SBusinessEmailBookedAppointment,
   SGetDashboardStats,
+  SGetAnalyticsData,
+  SGetAppointmentHistory,
 }

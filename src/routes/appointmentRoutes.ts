@@ -11,6 +11,8 @@ import {
   getTodayAppointmentsByBusinessID,
   createAllDayAppointments,
   getDashboardStats,
+  getAnalyticsData,
+  getAppointmentHistory,
 } from "../controllers/appointmentController";
 import { checkAuth } from "../middlewares/authMiddleware";
 
@@ -43,5 +45,9 @@ router.get(
 );
 /** GET DASHBOARD STATS BY BUSINESS ID */
 router.get("/appointment/stats/:businessID", checkAuth, getDashboardStats);
+/** GET 6-MONTH ANALYTICS BY BUSINESS ID */
+router.get("/appointment/analytics/:businessID", checkAuth, getAnalyticsData);
+/** GET FULL APPOINTMENT HISTORY BY BUSINESS ID */
+router.get("/appointment/history/:businessID", checkAuth, getAppointmentHistory);
 
 export default router;
