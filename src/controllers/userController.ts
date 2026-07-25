@@ -5,12 +5,14 @@ import {
   SEditUser,
   SGetUser,
   SLoginUser,
+  SGoogleAuth,
   SUpdateUserProfileImage,
   SVerifyConfirmToken,
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
   SGetUserByEmail,
   SUpdateFirstLoginStatus,
+  SResendConfirmationEmail,
   SGetServicesByBusinessID,
 } from "../services/userServices";
 import { serialize } from "cookie";
@@ -38,6 +40,29 @@ const loginUser = async ({ body }: Request, res: Response) => {
     res.send({ response_data });
   } catch (error) {
     handleError(res, "ERROR_LOGIN");
+  }
+};
+
+const googleAuth = async ({ body }: Request, res: Response) => {
+  try {
+    const { credential } = body;
+    const response_data = await SGoogleAuth(credential);
+    if (typeof response_data === "object") {
+      const serializedToken = serialize("token", response_data.token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: 1000 * 60 * 60 * 24 * 30,
+        path: "/",
+        domain: process.env.COOKIE_DOMAIN || "sacaturno.com.ar",
+      });
+      res.setHeader("Set-Cookie", serializedToken);
+      res.send({ response_data });
+      return;
+    }
+    res.send({ response_data });
+  } catch (error) {
+    handleError(res, "ERROR_GOOGLE_AUTH");
   }
 };
 
@@ -143,6 +168,15 @@ const updateFirstLoginStatus = async (req: Request, res: Response) => {
   }
 }
 
+const resendConfirmationEmail = async (req: Request, res: Response) => {
+  try {
+    const response_data = await SResendConfirmationEmail(req);
+    res.send({ response_data });
+  } catch (error) {
+    handleError(res, "ERROR_RESEND_CONFIRMATION_EMAIL");
+  }
+};
+
 const getServicesByBusinessID = async (req: Request, res: Response) => {
   try {
     const servicesData = await SGetServicesByBusinessID(req);
@@ -162,10 +196,12 @@ export {
   updateUserImage,
   loginUser,
   getProfilePic,
+  googleAuth,
   verifyConfirmToken,
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
   getUserByEmail,
   updateFirstLoginStatus,
-  getServicesByBusinessID
+  resendConfirmationEmail,
+  getServicesByBusinessID,
 };

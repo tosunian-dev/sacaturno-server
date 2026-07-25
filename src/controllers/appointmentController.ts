@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { handleError } from "../utils/error.handle";
+import BusinessModel from "../models/businessModel";
 import {
   SBookAppointment,
   SCreateAppointment,
@@ -16,10 +17,23 @@ import {
   SGetAnalyticsData,
   SGetAppointmentHistory,
 } from "../services/appointmentServices";
+import { RequestExtended } from "../interfaces/reqExtended.interface";
+import { JwtContextPayload } from "../utils/jwtGen.handle";
+import { hasPermission } from "../utils/checkPermission";
 
-const createAppointment = async ({ body }: Request, res: Response) => {
+const createAppointment = async (req: RequestExtended, res: Response) => {
   try {
-    const appointmentData = await SCreateAppointment(body);
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed =
+        (await hasPermission(user.employeeID!, "manage_own_appointments")) ||
+        (await hasPermission(user.employeeID!, "manage_all_appointments"));
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
+    const appointmentData = await SCreateAppointment(req.body);
+    if (appointmentData === "APPOINTMENT_LIMIT_REACHED") return res.status(400).send("APPOINTMENT_LIMIT_REACHED");
+    if (appointmentData === "EMPLOYEE_CONFLICT") return res.status(409).send("EMPLOYEE_CONFLICT");
+    if (appointmentData === "EMPLOYEE_NOT_IN_BRANCH") return res.status(400).send("EMPLOYEE_NOT_IN_BRANCH");
     res.send({ appointmentData, msg: "APPOINTMENT_CREATED" });
   } catch (error) {
     handleError(res, "ERROR_APPOINTMENT_CREATION");
@@ -62,8 +76,15 @@ const getAppointmentsByClientID = async (req: Request, res: Response) => {
   }
 };
 
-const deleteAppointment = async (req: Request, res: Response) => {
+const deleteAppointment = async (req: RequestExtended, res: Response) => {
   try {
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed =
+        (await hasPermission(user.employeeID!, "manage_own_appointments")) ||
+        (await hasPermission(user.employeeID!, "manage_all_appointments"));
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
     const appointmentDeleted = await SDeleteAppointment(req);
     res.send(appointmentDeleted);
   } catch (error) {
@@ -104,6 +125,7 @@ const getTodayAppointmentsByBusinessID = async (
 const createAllDayAppointments = async ({ body }: Request, res: Response) => {
   try {
     const appointmentData = await SCreateAllDayAppointments(body);
+    if (appointmentData === "APPOINTMENT_LIMIT_REACHED") return res.status(400).send("APPOINTMENT_LIMIT_REACHED");
     res.send({ appointmentData, msg: "APPOINTMENT_CREATED" });
   } catch (error) {
     handleError(res, "ERROR_APPOINTMENT_CREATION");
@@ -119,8 +141,22 @@ const getDashboardStats = async (req: Request, res: Response) => {
   }
 };
 
-const getAnalyticsData = async (req: Request, res: Response) => {
+const verifyOwnerAccess = async (user: JwtContextPayload, businessID: string): Promise<boolean> => {
+  if (user.businessID) return user.businessID === businessID;
+  // Fresh context token issued before business was created: verify ownership via DB
+  const business = await BusinessModel.findOne({ _id: businessID, ownerID: user.userId });
+  return !!business;
+};
+
+const getAnalyticsData = async (req: RequestExtended, res: Response) => {
   try {
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed = await hasPermission(user.employeeID!, "view_stats");
+      if (!allowed || user.businessID !== req.params.businessID) return res.status(403).send("PERMISSION_DENIED");
+    } else if (user?.role === "owner") {
+      if (!(await verifyOwnerAccess(user, req.params.businessID))) return res.status(403).send("FORBIDDEN");
+    }
     const data = await SGetAnalyticsData(req);
     res.send(data);
   } catch (error) {
@@ -128,8 +164,15 @@ const getAnalyticsData = async (req: Request, res: Response) => {
   }
 };
 
-const getAppointmentHistory = async (req: Request, res: Response) => {
+const getAppointmentHistory = async (req: RequestExtended, res: Response) => {
   try {
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed = await hasPermission(user.employeeID!, "view_stats");
+      if (!allowed || user.businessID !== req.params.businessID) return res.status(403).send("PERMISSION_DENIED");
+    } else if (user?.role === "owner") {
+      if (!(await verifyOwnerAccess(user, req.params.businessID))) return res.status(403).send("FORBIDDEN");
+    }
     const data = await SGetAppointmentHistory(req);
     res.send(data);
   } catch (error) {

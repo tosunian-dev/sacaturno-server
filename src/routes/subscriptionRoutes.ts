@@ -20,7 +20,7 @@ router.get(
   checkAuth,
   getSubscriptionByBusinessID
 );
-router.post("/subscription/pay/full", createMercadoPagoPreference);
+router.post("/subscription/pay/create-preference", createMercadoPagoPreference);
 router.post("/subscription/webhook", paymentWebhook);
 router.put("/subscription/update", updateSubscriptionPlan);
 router.get("/subscription/payments/get/all/:userID", checkAuth, getAllPayments);

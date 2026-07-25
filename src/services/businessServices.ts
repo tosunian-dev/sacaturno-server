@@ -44,9 +44,6 @@ const SCreateBusiness = async (businessData: IBusiness) => {
     subscriptionType: "SC_FREE",
     paymentDate: paymentDate.toDate(),
     expiracyDate: expDate.toDate(),
-    expiracyMonth: dayjs(expDate).month() + 1,
-    expiracyYear: dayjs(expDate).year(),
-    expiracyDay: dayjs(expDate).date(),
   };
   const subscriptionDetails = await SubscriptionModel.create(subDetails);
   const planPayment: IPlanPayment = await PlanPaymentModel.create({
@@ -165,10 +162,12 @@ const SGetServicesByOwnerID = async ({ params }: Request) => {
   return servicesData;
 };
 
+const MAX_SERVICES_PER_BUSINESS = 200;
+
 const SCreateService = async (serviceData: IService) => {
-  const serviceExists = await ServiceModel.find({ ownerID: serviceData.name });
-  if (serviceExists.length > 0) {
-    return "SERVICE_EXISTS";
+  const serviceCount = await ServiceModel.countDocuments({ businessID: serviceData.businessID });
+  if (serviceCount >= MAX_SERVICES_PER_BUSINESS) {
+    return "SERVICE_LIMIT_REACHED";
   }
   const createdBusiness = await ServiceModel.create(serviceData);
   return createdBusiness;

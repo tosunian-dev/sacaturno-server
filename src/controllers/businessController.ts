@@ -18,6 +18,8 @@ import {
   SGetAllBusinessSlugs,
 } from "../services/businessServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
+import { JwtContextPayload } from "../utils/jwtGen.handle";
+import { hasPermission } from "../utils/checkPermission";
 
 const createBusiness = async ({ body }: Request, res: Response) => {
   try {
@@ -117,17 +119,30 @@ const getServicesByOwnerID = async (req: Request, res: Response) => {
   }
 };
 
-const createService = async ({ body }: Request, res: Response) => {
+const createService = async (req: RequestExtended, res: Response) => {
   try {
-    const businessData = await SCreateService(body);
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed = await hasPermission(user.employeeID!, "manage_services");
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
+    const businessData = await SCreateService(req.body);
+    if (businessData === "SERVICE_LIMIT_REACHED") {
+      return res.status(400).json({ msg: "SERVICE_LIMIT_REACHED" });
+    }
     res.send({ msg: "SERVICE_CREATED" });
   } catch (error) {
     handleError(res, "ERROR_SERVICE_CREATION");
   }
 };
 
-const deleteService = async (req: Request, res: Response) => {
+const deleteService = async (req: RequestExtended, res: Response) => {
   try {
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed = await hasPermission(user.employeeID!, "manage_services");
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
     const businessData = await SDeleteService(req);
     res.send({ businessData, msg: "SERVICE_DELETED" });
   } catch (error) {
@@ -159,9 +174,14 @@ const getBusinessByEmail = async (req: Request, res: Response) => {
   }
 };
 
-const editService = async ({ body }: Request, res: Response) => {
+const editService = async (req: RequestExtended, res: Response) => {
   try {
-    const editedService = await SEditServiceData(body);
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed = await hasPermission(user.employeeID!, "manage_services");
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
+    const editedService = await SEditServiceData(req.body);
     if (editedService === "SERVICE_NOT_FOUND") {
       return res.send({ msg: "SERVICE_NOT_FOUND" });
     }
@@ -171,12 +191,14 @@ const editService = async ({ body }: Request, res: Response) => {
   }
 };
 
-const editScheduleAutomationParams = async (req: Request, res: Response) => {
+const editScheduleAutomationParams = async (req: RequestExtended, res: Response) => {
   try {
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") return res.status(403).send("PERMISSION_DENIED");
+    if (user?.role === "owner" && user.businessID !== req.params.businessID) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const editedBusiness = await SEditScheduleAutomationParams(req);
-    //if (editedBusiness === "BUSINESS_NOT_FOUND") {
-    //  return res.send({ msg: "BUSINESS_NOT_FOUND" });
-    //}
     res.send({ editedBusiness, msg: "SCHEDULE_EDITED" });
   } catch (error) {
     handleError(res, "ERROR_EDIT_SCHEDULE");

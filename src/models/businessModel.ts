@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import { IBusiness } from "../interfaces/business.interface";
 import { Schema, Types, model, Model } from "mongoose";
 
@@ -26,7 +25,7 @@ const BusinessSchema = new Schema<IBusiness>(
     },
     address: {
       type: String,
-      required: true,
+      required: false,
     },
     slug: {
       type: String,
@@ -50,17 +49,12 @@ const BusinessSchema = new Schema<IBusiness>(
     scheduleEnd: {
       type: Date,
       required: false,
-      default: dayjs().startOf('day').toDate()
+      default: null
     },
     automaticSchedule: {
       type: Boolean,
       default: false,
       required: false
-    },
-    subscription: {
-      type: String,
-      required: false,
-      default: "SC_FREE",
     },
     mpAccessToken: {
       type: String,
@@ -79,12 +73,34 @@ const BusinessSchema = new Schema<IBusiness>(
       required: false,
       default: false,
     },
+    mpAccountName: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    mpAccountEmail: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    bookingsEnabled: {
+      type: Boolean,
+      required: false,
+      default: true,
+    },
   },
   {
     timestamps: true,
     versionKey: false,
   }
 );
+
+// Owner's business retrieval (most common query after auth)
+BusinessSchema.index({ ownerID: 1 });
+// Public booking page + uniqueness enforcement
+BusinessSchema.index({ slug: 1 }, { unique: true });
+// Email uniqueness check on registration/edit
+BusinessSchema.index({ email: 1 });
 
 const BusinessModel = model("businesses", BusinessSchema);
 export default BusinessModel;

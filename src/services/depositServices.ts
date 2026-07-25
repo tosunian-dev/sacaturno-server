@@ -4,7 +4,7 @@ import AppointmentModel from "../models/appointmentModel";
 import BusinessModel from "../models/businessModel";
 import ServiceModel from "../models/serviceModel";
 import { SRefreshOAuthToken } from "./mpOAuthServices";
-import { SClientEmailBookedAppointment, SBusinessEmailBookedAppointment } from "./appointmentServices";
+import { SClientEmailBookedAppointment, SBusinessEmailBookedAppointment, SEmployeeEmailBookedAppointment } from "./appointmentServices";
 import axios from "axios";
 import buildPreference from "../utils/preferenceBuilder";
 
@@ -22,6 +22,7 @@ const SCreateDepositPreference = async (req: Request) => {
         "+mpAccessToken +mpRefreshToken"
     );
     if (!business) return "BUSINESS_NOT_FOUND";
+    if (business.bookingsEnabled === false) return "BOOKINGS_DISABLED";
     if (!business.mpLinked || !business.mpAccessToken) return "BUSINESS_NOT_LINKED";
 
     // 3. Obtener el servicio para obtener el monto de la seña (depositAmount)
@@ -134,6 +135,7 @@ const SDepositWebhook = async (req: Request) => {
                 const depositAmount = service?.depositAmount ?? 0;
                 SClientEmailBookedAppointment(updatedAppointment, business, depositAmount);
                 SBusinessEmailBookedAppointment(updatedAppointment, business, depositAmount);
+                SEmployeeEmailBookedAppointment(updatedAppointment, business, depositAmount);
             }
         }
 

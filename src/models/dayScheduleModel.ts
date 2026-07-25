@@ -39,6 +39,9 @@ const DayScheduleSchema = new Schema<IDaySchedule> (
   }
 );
 
+// Fetch all day schedules for a business (used by schedule automation cron)
+DayScheduleSchema.index({ businessID: 1 });
+
 const DayScheduleModel = model("day_schedules", DayScheduleSchema);
 export default DayScheduleModel;
 

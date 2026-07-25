@@ -13,7 +13,8 @@ const connectOAuth = async (req: RequestExtended, res: Response) => {
     const businessID = req.query.businessID as string;
     if (!businessID) return res.status(400).send({ msg: "MISSING_BUSINESS_ID" });
 
-    const url = SGetOAuthURL(businessID);
+    const url = await SGetOAuthURL(businessID);
+    if (url === "PLAN_REQUIRED") return res.status(402).send({ msg: "PLAN_REQUIRED" });
     res.send({ url });
   } catch (error) {
     handleError(res, "ERROR_OAUTH_CONNECT");
@@ -26,7 +27,7 @@ const oauthCallback = async (req: Request, res: Response) => {
 
   if (error || !code || !businessID) {
     return res.redirect(
-      `${process.env.FRONTEND_URL}/admin/business/services?mp=error`
+      `${process.env.FRONTEND_URL}/admin/account/mercadopago?mp=error`
     );
   }
 
@@ -38,13 +39,13 @@ const oauthCallback = async (req: Request, res: Response) => {
 
     if (result === "BUSINESS_NOT_FOUND") {
       return res.redirect(
-        `${process.env.FRONTEND_URL}/admin/business/services?mp=error`
+        `${process.env.FRONTEND_URL}/admin/account/mercadopago?mp=error`
       );
     }
 
-    res.redirect(`${process.env.FRONTEND_URL}/admin/business/services?mp=success`);
+    res.redirect(`${process.env.FRONTEND_URL}/admin/account/mercadopago?mp=success`);
   } catch (err) {
-    res.redirect(`${process.env.FRONTEND_URL}/admin/business/services?mp=error`);
+    res.redirect(`${process.env.FRONTEND_URL}/admin/account/mercadopago?mp=error`);
   }
 };
 

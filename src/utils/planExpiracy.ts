@@ -1,8 +1,8 @@
 import dayjs from "dayjs";
 import SubscriptionModel from "../models/subscriptionModel";
-import BusinessModel from "../models/businessModel";
 import UserModel from "../models/userModel";
 import { Resend } from "resend";
+import { isPaidPlan, PLAN_LABELS } from "../config/planLimits";
 
 export const handlePlanExpiracy = async () => {
   // GET CURRENT DATE
@@ -40,10 +40,6 @@ export const handlePlanExpiracy = async () => {
         subscriptions[i]._id,
         { subscriptionType: "SC_EXPIRED" }
       );
-      await BusinessModel.findOneAndUpdate(
-        { _id: expiredSubscription?.businessID },
-        { subscription: "SC_EXPIRED" }
-      );
       const ownerData = await UserModel.findOne({
         _id: expiredSubscription?.ownerID,
       });
@@ -51,7 +47,8 @@ export const handlePlanExpiracy = async () => {
         console.log(`NO OWNER FOUND FOR SUBSCRIPTION ${expiredSubscription?._id} — skipping email`);
       }
       if (ownerData) {
-        if (expiredSubscription?.subscriptionType === "SC_FULL") {
+        if (expiredSubscription && isPaidPlan(expiredSubscription.subscriptionType)) {
+          const planLabel = PLAN_LABELS[expiredSubscription.subscriptionType];
           const { error: emailError } = await resend.emails.send({
             from: "SacaTurno <noresponder@sacaturno.com.ar>",
             to: [ownerData.email],
@@ -61,7 +58,7 @@ export const handlePlanExpiracy = async () => {
           <head>
             <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
           </head>
-          <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Tu suscripción al Plan Pro ha caducado<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
+          <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Tu suscripción al ${planLabel} ha caducado<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
           </div>
         
           <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
@@ -98,8 +95,8 @@ export const handlePlanExpiracy = async () => {
                         <tr>
                           <td>
                             <p style="font-size:14px;line-height:1.5;margin:16px 0;">¡Hola ${ownerData?.name}!,</p>
-                            <p style="font-size:14px;line-height:1.5;margin:16px 0">Te enviamos este correo con el fin de informarte que tu suscripción al Plan Pro ha vencido.</p>
-                            <p style="font-size:14px;line-height:1.5;margin:16px 0">Si querés seguir utilizando las funcionalidades del Plan Pro, debés renovar tu suscripción.</p>
+                            <p style="font-size:14px;line-height:1.5;margin:16px 0">Te enviamos este correo con el fin de informarte que tu suscripción al ${planLabel} ha vencido.</p>
+                            <p style="font-size:14px;line-height:1.5;margin:16px 0">Si querés seguir utilizando las funcionalidades del ${planLabel}, debés renovar tu suscripción.</p>
                             <div style="width:100%;height:fit-content;display:flex;justify-content:center;margin-top:2.4rem;">
                             <a href="https://sacaturno.com.ar/admin/perfil" target="_blank"  style="margin:auto;background-color: rgb(221, 73, 36);border-radius: 8px;color: rgb(255, 255, 255);display: inline-block;font-size: 12px;font-weight: bold;line-height: 40px;padding: 0px 16px;text-align: center;text-transform: uppercase;text-decoration: none;width: auto;">renovar suscripción</a>
                           </div>
@@ -119,7 +116,7 @@ export const handlePlanExpiracy = async () => {
                     <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
                       <tbody style="width:100%">
                         <tr style="width:100%">
-                          <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 SacaTurno. Todos los derechos reservados.</p>
+                          <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
                         </tr>
                       </tbody>
                     </table>
@@ -131,7 +128,7 @@ export const handlePlanExpiracy = async () => {
         
               </html>`,
           });
-          if (emailError) console.log("Resend error (SC_FULL):", emailError);
+          if (emailError) console.log(`Resend error (${expiredSubscription.subscriptionType}):`, emailError);
         }
 
         if (expiredSubscription?.subscriptionType === "SC_FREE") {
@@ -203,7 +200,7 @@ export const handlePlanExpiracy = async () => {
                           <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
                             <tbody style="width:100%">
                               <tr style="width:100%">
-                                <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2024 SacaTurno. Todos los derechos reservados.</p>
+                                <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
                               </tr>
                             </tbody>
                           </table>

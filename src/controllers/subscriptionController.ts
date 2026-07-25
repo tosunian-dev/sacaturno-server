@@ -11,6 +11,7 @@ import { Request, Response } from "express";
 import SubscriptionModel from "../models/subscriptionModel";
 import dayjs from "dayjs";
 import PlanPaymentModel from "../models/planPaymentModel";
+import { isPaidPlan } from "../config/planLimits";
 
 const getSubscriptionByBusinessID = async (req: Request, res: Response) => {
   try {
@@ -39,6 +40,9 @@ const getSubscriptionByOwnerID = async (req: Request, res: Response) => {
 const createMercadoPagoPreference = async (req: Request, res: Response) => {
   try {
     const preferenceData = await SCreateMercadoPagoPreference(req);
+    if (preferenceData === "INVALID_PLAN") {
+      return res.status(400).send("INVALID_PLAN");
+    }
     if (!preferenceData) {
       return res.send("ERROR_PREFERENCE_CREATION");
     }
@@ -76,11 +80,17 @@ const paymentWebhook = async (req: Request, res: Response) => {
           const paymentDate = dayjs();
           const expiracyDate = paymentDate.add(1, "month");
           if (data.status === "approved") {
+            // MP normaliza las claves de metadata a snake_case al devolverlas
+            const targetPlan = data.metadata?.target_plan;
+            if (!isPaidPlan(targetPlan)) {
+              console.log("MP Webhook: falta o es inválido target_plan en metadata", data.metadata);
+              return;
+            }
             const updatedSubscription = {
               userID: data.metadata.owner_id,
               email: data.metadata.email,
               businessID: data.metadata.business_id,
-              subscriptionType: "SC_FULL",
+              subscriptionType: targetPlan,
               paymentDate: paymentDate.toDate(),
               expiracyDate: expiracyDate.toDate(),
               mpPaymentID: paymentInfo.data.id,

@@ -6,19 +6,42 @@ const UserSchema = new Schema<IUser>(
     name: {
       type: String,
       required: true,
+      minlength: 2,
+      maxlength: 50,
+    },
+    surname: {
+      type: String,
+      required: true,
+      minlength: 2,
+      maxlength: 50,
     },
     email: {
       type: String,
       required: true,
+      unique: true,
+      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Formato de email inválido"],
     },
     phone: {
       type: Number,
       required: false,
-      default: null,
+      unique: true,
+      sparse: true,
     },
     password: {
       type: String,
-      required: true,
+      required: false,
+    },
+    googleId: {
+      type: String,
+      required: false,
+      unique: true,
+      sparse: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "google"],
+      default: "local",
+      required: false,
     },
     profileImage: {
       type: String,
