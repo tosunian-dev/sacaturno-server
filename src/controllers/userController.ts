@@ -14,6 +14,8 @@ import {
   SUpdateFirstLoginStatus,
   SResendConfirmationEmail,
   SGetServicesByBusinessID,
+  SSetBackupPassword,
+  SGetPasswordStatus,
 } from "../services/userServices";
 import { serialize } from "cookie";
 import fs from "fs";
@@ -177,6 +179,33 @@ const resendConfirmationEmail = async (req: Request, res: Response) => {
   }
 };
 
+const setBackupPassword = async (req: RequestExtended, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).send({ response_data: "NOT_AUTHENTICATED" });
+    }
+    const { password } = req.body;
+    const response_data = await SSetBackupPassword(userId, password);
+    res.send({ response_data });
+  } catch (error) {
+    handleError(res, "ERROR_SET_BACKUP_PASSWORD");
+  }
+};
+
+const getPasswordStatus = async (req: RequestExtended, res: Response) => {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(401).send({ response_data: "NOT_AUTHENTICATED" });
+    }
+    const response_data = await SGetPasswordStatus(userId);
+    res.send({ response_data });
+  } catch (error) {
+    handleError(res, "ERROR_GET_PASSWORD_STATUS");
+  }
+};
+
 const getServicesByBusinessID = async (req: Request, res: Response) => {
   try {
     const servicesData = await SGetServicesByBusinessID(req);
@@ -204,4 +233,6 @@ export {
   updateFirstLoginStatus,
   resendConfirmationEmail,
   getServicesByBusinessID,
+  setBackupPassword,
+  getPasswordStatus,
 };

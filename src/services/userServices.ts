@@ -444,6 +444,39 @@ const SResendConfirmationEmail = async ({ params }: Request) => {
   return "EMAIL_SENT";
 };
 
+// Permite a un usuario autenticado que aún no tiene contraseña (típicamente
+// cuentas creadas con Google) definir una contraseña de respaldo, para poder
+// ingresar con email/contraseña si pierde el acceso a su cuenta de Google.
+// Solo aplica cuando la cuenta no tiene contraseña: cambiar una existente se
+// hace por el flujo de recuperación (que exige acceso al email).
+const SSetBackupPassword = async (userId: string, password: string) => {
+  if (!password || password.length < 6) {
+    return "INVALID_PASSWORD";
+  }
+  const user = await UserModel.findById(userId);
+  if (!user) {
+    return "USER_NOT_FOUND";
+  }
+  if (user.password) {
+    return "PASSWORD_ALREADY_SET";
+  }
+  user.password = await encrypt(password);
+  await user.save();
+  return "PASSWORD_SET";
+};
+
+// Estado de la contraseña para el panel (nunca expone el hash).
+const SGetPasswordStatus = async (userId: string) => {
+  const user = await UserModel.findById(userId).select("password authProvider");
+  if (!user) {
+    return "USER_NOT_FOUND";
+  }
+  return {
+    hasPassword: !!user.password,
+    authProvider: user.authProvider ?? "local",
+  };
+};
+
 const SGetServicesByBusinessID = async ({ params }: Request) => {
   const servicesData = await ServiceModel.find({
     businessID: params.businessID,
@@ -465,4 +498,6 @@ export {
   SUpdateFirstLoginStatus,
   SResendConfirmationEmail,
   SGetServicesByBusinessID,
+  SSetBackupPassword,
+  SGetPasswordStatus,
 };

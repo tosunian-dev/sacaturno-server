@@ -14,6 +14,8 @@ import {
   updateFirstLoginStatus,
   resendConfirmationEmail,
   getServicesByBusinessID,
+  setBackupPassword,
+  getPasswordStatus,
 } from "../controllers/userController";
 import multerMiddleware from "../middlewares/multerMiddleware";
 import { checkAuth } from "../middlewares/authMiddleware";
@@ -39,6 +41,10 @@ router.post("/user/resend-confirmation/:email", resendConfirmationEmail);
 router.post("/user/password/recovery/:ownerID", sendPasswordRecoveryEmail);
 // UPDATE PASSWORD ON RECOVERY MAIL CONFIRMATION
 router.post("/user/password/recovery/set/:token", updatePasswordOnRecovery);
+
+// BACKUP PASSWORD (logged-in user without password, e.g. Google accounts)
+router.get("/user/password/status", checkAuth, getPasswordStatus);
+router.post("/user/password/set", checkAuth, setBackupPassword);
 
 // UPDATE USER'S FIRST LOGIN -- SET isFirstLogin TO FALSE 
 router.put("/user/firstlogin/:userID", checkAuth, updateFirstLoginStatus);
