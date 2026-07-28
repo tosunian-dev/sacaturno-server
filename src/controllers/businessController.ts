@@ -195,7 +195,14 @@ const editScheduleAutomationParams = async (req: RequestExtended, res: Response)
   try {
     const user = req.user as JwtContextPayload;
     if (user?.role === "employee") return res.status(403).send("PERMISSION_DENIED");
-    if (user?.role === "owner" && user.businessID !== req.params.businessID) {
+    // Solo validamos scope si el token trae businessID. Un owner recién
+    // onboardeado obtiene su context token antes de crear el business, así que
+    // su token no tiene businessID y no debe ser rechazado.
+    if (
+      user?.role === "owner" &&
+      user.businessID &&
+      user.businessID !== req.params.businessID
+    ) {
       return res.status(403).send("FORBIDDEN");
     }
     const editedBusiness = await SEditScheduleAutomationParams(req);
