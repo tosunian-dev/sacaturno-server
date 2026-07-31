@@ -45,12 +45,29 @@ const AppointmentScheduleSchema = new Schema<IAppointmentSchedule>(
       type: Date,
       required: true,
     },
+    employeeID: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    branchID: {
+      type: String,
+      required: false,
+      default: null,
+    },
   },
   {
     timestamps: true,
     versionKey: false,
   }
 );
+
+// Fetch all schedule templates for a business
+AppointmentScheduleSchema.index({ businessID: 1 });
+// Populate join: referenced in appointment generation cron
+AppointmentScheduleSchema.index({ dayScheduleID: 1 });
+// Employee schedule conflict detection
+AppointmentScheduleSchema.index({ employeeID: 1, dayNumber: 1 }, { sparse: true });
 
 const AppointmentScheduleModel = model(
   "appointment_schedules",

@@ -38,5 +38,10 @@ const planPaymentSchema = new Schema<IPlanPayment>(
   }
 );
 
+// Webhook idempotency check
+planPaymentSchema.index({ mpPaymentID: 1 }, { sparse: true });
+// Payment history sorted by date
+planPaymentSchema.index({ userID: 1, createdAt: -1 });
+
 const PlanPaymentModel = model("plan_payments", planPaymentSchema);
 export default PlanPaymentModel;

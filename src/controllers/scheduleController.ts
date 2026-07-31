@@ -32,6 +32,15 @@ const editDay = async (req: Request, res: Response) => {
 const createScheduleAppointment = async (req: Request, res: Response) => {
   try {
     const appointmentCreated = await SCreateScheduleAppointment(req);
+    if (appointmentCreated === "SCHEDULE_LIMIT_REACHED") {
+      return res.status(400).send("SCHEDULE_LIMIT_REACHED");
+    }
+    if (appointmentCreated === "EMPLOYEE_CONFLICT") {
+      return res.status(409).send("EMPLOYEE_CONFLICT");
+    }
+    if (appointmentCreated === "EMPLOYEE_NOT_IN_BRANCH") {
+      return res.status(400).send("EMPLOYEE_NOT_IN_BRANCH");
+    }
     res.send(appointmentCreated);
   } catch (error) {
     handleError(res, "ERROR_CREATE_APPOINTMENT_SCHEDULE");

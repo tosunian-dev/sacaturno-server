@@ -1,14 +1,19 @@
 import axios from "axios";
 import { Request } from "express";
 import BusinessModel from "../models/businessModel";
+import SubscriptionModel from "../models/subscriptionModel";
+import { getPlanLimits } from "../config/planLimits";
 
 const MP_OAUTH_URL = "https://auth.mercadopago.com/authorization";
 const MP_TOKEN_URL = "https://api.mercadopago.com/oauth/token";
 
 // Genera la URL de autorización de MP
-// el usuario es redirigido acá para vincular su cuenta con la app 
+// el usuario es redirigido acá para vincular su cuenta con la app
 // appName: (SacaTurno - Reservas)
-const SGetOAuthURL = (businessID: string): string => {
+const SGetOAuthURL = async (businessID: string): Promise<string | "PLAN_REQUIRED"> => {
+    const subscription = await SubscriptionModel.findOne({ businessID });
+    if (!getPlanLimits(subscription?.subscriptionType).depositsEnabled) return "PLAN_REQUIRED";
+
     const params = new URLSearchParams({
         client_id: process.env.MP_MARKETPLACE_CLIENT_ID as string,
         response_type: "code",
@@ -36,12 +41,28 @@ const SHandleOAuthCallback = async (code: string, businessID: string) => {
 
     // data.access_token  → token del negocio (expira en aprox 6 meses)
     // data.refresh_token → para renovarlo sin que el usuario vuelva a autorizar
+
+    // Obtenemos los datos del titular de la cuenta MP para mostrarlos en el panel
+    let mpAccountName: string | null = null;
+    let mpAccountEmail: string | null = null;
+    try {
+        const { data: mpUser } = await axios.get("https://api.mercadopago.com/v1/users/me", {
+            headers: { Authorization: `Bearer ${data.access_token}` },
+        });
+        mpAccountName = `${mpUser.first_name ?? ""} ${mpUser.last_name ?? ""}`.trim() || null;
+        mpAccountEmail = mpUser.email ?? null;
+    } catch {
+        // no bloqueamos el flujo si falla la consulta de perfil
+    }
+
     const business = await BusinessModel.findByIdAndUpdate(
         businessID,
         {
             mpAccessToken: data.access_token,
             mpRefreshToken: data.refresh_token,
             mpLinked: true,
+            mpAccountName,
+            mpAccountEmail,
         },
         { new: true }
     );
@@ -80,7 +101,7 @@ const SRefreshOAuthToken = async (businessID: string) => {
 const SDisconnectOAuth = async (businessID: string) => {
     const business = await BusinessModel.findByIdAndUpdate(
         businessID,
-        { mpAccessToken: null, mpRefreshToken: null, mpLinked: false },
+        { mpAccessToken: null, mpRefreshToken: null, mpLinked: false, mpAccountName: null, mpAccountEmail: null },
         { new: true }
     );
     if (!business) return "BUSINESS_NOT_FOUND";

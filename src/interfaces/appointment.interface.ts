@@ -15,4 +15,8 @@ export interface IAppointment {
   depositStatus?: "none" | "pending" | "paid" | "failed";
   mpPaymentID?: string | null;
   mpPreferenceID?: string | null;
+  employeeID?: string | null;
+  branchID?: string | null;
+  sentReminders?: string[];
+  cancelToken?: string | null;
 }

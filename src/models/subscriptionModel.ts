@@ -24,18 +24,8 @@ const subscriptionSchema = new Schema<ISubscription>(
       type: Date,
       required: true,
     },
-    expiracyDay: {
-      type: Number,
-      required: false,
-    },
-    expiracyYear: {
-      type: Number,
-      required: false,
-      value: 2024,
-      default: 2024
-    },
-    expiracyMonth: {
-      type: Number,
+    expiryReminderSentAt: {
+      type: Date,
       required: false,
     },
   },
@@ -44,6 +34,11 @@ const subscriptionSchema = new Schema<ISubscription>(
     versionKey: false,
   }
 );
+
+// One subscription per business; queried on every appointment creation
+subscriptionSchema.index({ businessID: 1 }, { unique: true });
+// User's subscription retrieval
+subscriptionSchema.index({ ownerID: 1 });
 
 const SubscriptionModel = model("subscription", subscriptionSchema);
 export default SubscriptionModel;

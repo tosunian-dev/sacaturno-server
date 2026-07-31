@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 import SubscriptionModel from "../models/subscriptionModel";
-import BusinessModel from "../models/businessModel";
 import { MercadoPagoConfig, Preference } from "mercadopago";
-import dayjs from "dayjs";
 import PlanPaymentModel from "../models/planPaymentModel";
+import { getPlanPrice, isPaidPlan, PLAN_LABELS } from "../config/planLimits";
 
 interface IPreference {
   items: {
@@ -34,6 +33,9 @@ const SGetSubscriptionByOwnerID = async ({ params }: Request) => {
 };
 
 const SCreateMercadoPagoPreference = async (req: Request) => {
+  const targetPlan = req.body.targetPlan;
+  if (!isPaidPlan(targetPlan)) return "INVALID_PLAN";
+
   const client = new MercadoPagoConfig({
     accessToken: process.env.ACCESS_TOKEN as string,
   });
@@ -41,10 +43,10 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
   const body = {
     items: [
       {
-        id: "SC_FULL_PLAN",
-        title: req.body.title,
+        id: `${targetPlan}_PLAN`,
+        title: PLAN_LABELS[targetPlan],
         quantity: Number(req.body.quantity),
-        unit_price: Number(process.env.FULL_PLAN_PRICE),
+        unit_price: getPlanPrice(targetPlan),
         currency_id: req.body.currency_id,
       },
     ],
@@ -58,6 +60,7 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
       email: req.body.email,
       businessID: req.body.businessID,
       ownerID: req.body.ownerID,
+      targetPlan,
     },
     external_reference: req.body.ownerID,
     notification_url: "https://sacaturno-server-production.up.railway.app/api/subscription/webhook"
@@ -79,19 +82,16 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
         paymentDate: body.paymentDate,
         expiracyDate: body.expiracyDate,
         subscriptionType: body.subscriptionType,
-        expiracyMonth: dayjs().month() + 2,
-        expiracyYear: dayjs().year(),
-        expiracyDay: dayjs().date(),
       },
       { new: true }
     );
-    await BusinessModel.findOneAndUpdate(
-      { _id: body.businessID },
-      { subscription: body.subscriptionType }
-    );
     try {
       const planPayment = await PlanPaymentModel.create({
-        price: process.env.FULL_PLAN_PRICE,
+        price:
+          body.amountPaid ??
+          (isPaidPlan(body.subscriptionType)
+            ? getPlanPrice(body.subscriptionType)
+            : 0),
         businessID: body.businessID,
         userID: updated?.ownerID,
         paymentDate: body.paymentDate,

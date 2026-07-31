@@ -1,4 +1,5 @@
 import { NextFunction, Request, Response } from "express";
+import { TokenExpiredError, JsonWebTokenError } from "jsonwebtoken";
 import { verifyToken } from "../utils/jwtGen.handle";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
@@ -28,6 +29,9 @@ const checkAuth = async (
       next();
     }
   } catch (error) {
+    if (error instanceof TokenExpiredError || error instanceof JsonWebTokenError) {
+      return res.status(401).send("SESSION_EXPIRED");
+    }
     res.status(400).send("NOT_VALID_AUTH");
   }
 };

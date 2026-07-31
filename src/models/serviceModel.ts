@@ -41,5 +41,12 @@ const ServiceSchema = new Schema<IService>(
   }
 );
 
+// List services for a business (most common query)
+ServiceSchema.index({ businessID: 1 });
+// Owner-scoped service lookup
+ServiceSchema.index({ ownerID: 1 });
+// Deposit flow: findOne({ businessID, name }) to resolve service by name
+ServiceSchema.index({ businessID: 1, name: 1 });
+
 const ServiceModel = model("services", ServiceSchema);
 export default ServiceModel;

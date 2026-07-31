@@ -22,5 +22,7 @@ const ImageSchema = new Schema<IImage>(
   }
 );
 
+ImageSchema.index({ userId: 1 });
+
 const ImageModel = model("images", ImageSchema);
 export default ImageModel;
