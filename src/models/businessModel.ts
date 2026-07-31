@@ -15,6 +15,11 @@ const BusinessSchema = new Schema<IBusiness>(
       type: String,
       required: true,
     },
+    businessCategory: {
+      type: String,
+      required: false,
+      default: null,
+    },
     email: {
       type: String,
       required: false,
@@ -88,6 +93,13 @@ const BusinessSchema = new Schema<IBusiness>(
       required: false,
       default: true,
     },
+    // Antelación mínima (en horas) para que el cliente pueda autocancelar por
+    // link. El negocio/empleado siempre puede cancelar sin importar la ventana.
+    cancellationWindowHours: {
+      type: Number,
+      required: false,
+      default: 24,
+    },
   },
   {
     timestamps: true,
@@ -101,6 +113,8 @@ BusinessSchema.index({ ownerID: 1 });
 BusinessSchema.index({ slug: 1 }, { unique: true });
 // Email uniqueness check on registration/edit
 BusinessSchema.index({ email: 1 });
+// Classification / filtering by rubro (backstage + future public search)
+BusinessSchema.index({ businessCategory: 1 });
 
 const BusinessModel = model("businesses", BusinessSchema);
 export default BusinessModel;

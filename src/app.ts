@@ -17,6 +17,7 @@ import depositRoutes from "./routes/depositRoutes";
 import employeeRoutes from "./routes/employeeRoutes";
 import branchRoutes from "./routes/branchRoutes";
 import superadminRoutes from "./routes/superadminRoutes";
+import { SGetPlanPrices } from "./services/planPricingServices";
 
 // SERVER INICIALIZATION
 const app = express();
@@ -28,6 +29,10 @@ app.listen(PORT, () => {
 // MONGODB CONNECTION
 connectDB().then(() => {
   console.log(`DB connected`);
+  // Seedea el doc singleton de precios (si falta) y carga el cache en memoria.
+  SGetPlanPrices()
+    .then(() => console.log("Plan prices cache loaded"))
+    .catch((err) => console.error("Plan prices seed failed", err));
 });
 
 // PROGRAMMED SUBSCRIPTION EXPIRACY HANDLER

@@ -39,7 +39,31 @@ const PRICE_ENV_KEY: Record<PaidPlan, string> = {
 export const isPaidPlan = (value: unknown): value is PaidPlan =>
   typeof value === "string" && PAID_PLANS.includes(value as PaidPlan);
 
-export const getPlanPrice = (plan: PaidPlan): number => Number(process.env[PRICE_ENV_KEY[plan]]);
+// Defaults de seed si no hay env var ni doc en la DB.
+const PRICE_DEFAULTS: Record<PaidPlan, number> = {
+  SC_BASIC: 9990,
+  SC_PRO: 19990,
+  SC_FULL: 29990,
+};
+
+// Precios para sembrar el doc singleton: env var o, en su defecto, el default.
+export const getEnvPlanPrices = (): Record<PaidPlan, number> => ({
+  SC_BASIC: Number(process.env[PRICE_ENV_KEY.SC_BASIC]) || PRICE_DEFAULTS.SC_BASIC,
+  SC_PRO: Number(process.env[PRICE_ENV_KEY.SC_PRO]) || PRICE_DEFAULTS.SC_PRO,
+  SC_FULL: Number(process.env[PRICE_ENV_KEY.SC_FULL]) || PRICE_DEFAULTS.SC_FULL,
+});
+
+// Cache en memoria de los precios. Fuente real: doc singleton en Mongo,
+// seedeado al boot (app.ts) y refrescado en cada escritura desde backstage.
+// Se mantiene sync para no cambiar las firmas de los call-sites existentes.
+let priceCache: Partial<Record<PaidPlan, number>> = {};
+
+export const setPlanPriceCache = (prices: Record<PaidPlan, number>): void => {
+  priceCache = prices;
+};
+
+export const getPlanPrice = (plan: PaidPlan): number =>
+  priceCache[plan] ?? (Number(process.env[PRICE_ENV_KEY[plan]]) || PRICE_DEFAULTS[plan]);
 
 export const getPlanLimits = (subscriptionType: SubscriptionType | undefined | null): IPlanLimits =>
   PLAN_LIMITS[subscriptionType ?? "SC_FREE"] ?? PLAN_LIMITS.SC_FREE;

@@ -1,11 +1,13 @@
 import { Request } from "express";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import AppointmentModel from "../models/appointmentModel";
+import CancelledAppointmentModel from "../models/cancelledAppointmentModel";
 import BusinessModel from "../models/businessModel";
 import ServiceModel from "../models/serviceModel";
 import { SRefreshOAuthToken } from "./mpOAuthServices";
 import { SClientEmailBookedAppointment, SBusinessEmailBookedAppointment, SEmployeeEmailBookedAppointment } from "./appointmentServices";
 import axios from "axios";
+import crypto from "crypto";
 import buildPreference from "../utils/preferenceBuilder";
 
 // Crea la preferencia de pago para la seña y devuelve el init_point para redirigir al cliente a MP
@@ -91,8 +93,15 @@ const SCreateDepositPreference = async (req: Request) => {
 
 // Webhook: MP notifica el resultado del pago
 const SDepositWebhook = async (req: Request) => {
-    const { data } = req.body;
+    const { type, data } = req.body;
     if (!data?.id) return "INVALID_PAYLOAD";
+
+    // MP manda todo a un mismo endpoint y se distingue por "type". Solo nos
+    // interesan las notificaciones de pago. Los reembolsos NO son un tipo aparte:
+    // llegan como type "payment" con action "payment.updated", y se detectan más
+    // abajo consultando el estado del pago. Ignoramos merchant_order, chargebacks,
+    // etc. (type ausente = notificación legacy/test → seguimos por compatibilidad).
+    if (type && type !== "payment") return `IGNORED_${type}`;
 
     // Idempotencia: si ya procesamos este paymentID, ignoramos
     const paymentID = data.id.toString();
@@ -109,6 +118,28 @@ const SDepositWebhook = async (req: Request) => {
         }
     );
 
+    // Notificación de reembolso: MP marca el pago como "refunded" (total) o deja
+    // transaction_amount_refunded > 0 (parcial). Confirmamos el reembolso en el
+    // registro de cancelación. Va ANTES del branch "approved" para que un pago
+    // reembolsado no se reinterprete como una reserva aprobada.
+    const refundedAmount = paymentData.transaction_amount_refunded ?? 0;
+    if (paymentData.status === "refunded" || refundedAmount > 0) {
+        const cancellation = await CancelledAppointmentModel.findOne({ mpPaymentID: paymentID });
+        if (!cancellation) return "NO_CANCELLATION_FOUND";
+        if (cancellation.refundStatus === "refunded") return "ALREADY_PROCESSED";
+
+        const refundID = Array.isArray(paymentData.refunds) && paymentData.refunds.length > 0
+            ? paymentData.refunds[paymentData.refunds.length - 1].id?.toString() ?? null
+            : cancellation.refundID ?? null;
+
+        await CancelledAppointmentModel.findByIdAndUpdate(cancellation._id, {
+            refundStatus: "refunded",
+            refundID,
+            refundAmount: refundedAmount || cancellation.refundAmount,
+        });
+        return "REFUND_CONFIRMED";
+    }
+
     const appointmentID = paymentData.external_reference;
     if (!appointmentID) return "NO_EXTERNAL_REFERENCE";
 
@@ -121,6 +152,7 @@ const SDepositWebhook = async (req: Request) => {
                 depositStatus: "paid",
                 mpPaymentID: paymentID,
                 title: paymentData.payer?.name ?? "Reservado",
+                cancelToken: crypto.randomBytes(24).toString("hex"),
             },
             { new: true }
         );

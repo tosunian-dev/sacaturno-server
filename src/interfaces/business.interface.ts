@@ -1,6 +1,7 @@
 export interface IBusiness {
   ownerID: string;
   name: string;
+  businessCategory?: string;
   businessType: string;
   address?: string;
   phone: number;
@@ -19,4 +20,5 @@ export interface IBusiness {
   mpAccountName?: string | null;
   mpAccountEmail?: string | null;
   bookingsEnabled?: boolean;
+  cancellationWindowHours?: number;
 }

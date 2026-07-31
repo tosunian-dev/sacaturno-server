@@ -198,7 +198,7 @@ const SGetTopBusinesses = async (windowDays = DEFAULT_ACTIVITY_WINDOW_DAYS, limi
 };
 
 const SGetFeatureAdoption = async () => {
-  const [totalBusinesses, totalServices, servicesWithDeposit, businessesWithEmployees, businessesWithBranches, byType] =
+  const [totalBusinesses, totalServices, servicesWithDeposit, businessesWithEmployees, businessesWithBranches, byType, byCategory] =
     await Promise.all([
       BusinessModel.countDocuments(),
       ServiceModel.countDocuments(),
@@ -206,6 +206,7 @@ const SGetFeatureAdoption = async () => {
       EmployeeModel.distinct("businessID"),
       BranchModel.distinct("businessID"),
       BusinessModel.aggregate([{ $group: { _id: "$businessType", count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+      BusinessModel.aggregate([{ $group: { _id: "$businessCategory", count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
     ]);
 
   return {
@@ -216,6 +217,7 @@ const SGetFeatureAdoption = async () => {
     businessesUsingBranches: businessesWithBranches.length,
     totalBusinesses,
     byBusinessType: byType.map((t) => ({ businessType: t._id || "Sin categoría", count: t.count })),
+    byCategory: byCategory.map((c) => ({ businessCategory: c._id || null, count: c.count })),
   };
 };
 
@@ -245,15 +247,16 @@ const SGetBusinesses = async (req: Request) => {
   const page = Math.max(Number(req.query.page) || 1, 1);
   const pageSize = 20;
   const search = String(req.query.search || "").trim();
+  const category = String(req.query.category || "").trim();
 
-  const filter = search
-    ? { name: { $regex: search, $options: "i" } }
-    : {};
+  const filter: Record<string, unknown> = {};
+  if (search) filter.name = { $regex: search, $options: "i" };
+  if (category) filter.businessCategory = category;
 
   const [total, businesses] = await Promise.all([
     BusinessModel.countDocuments(filter),
     BusinessModel.find(filter)
-      .select("name slug businessType email phone createdAt mpLinked")
+      .select("name slug businessType businessCategory email phone createdAt mpLinked")
       .sort({ createdAt: -1 })
       .skip((page - 1) * pageSize)
       .limit(pageSize)

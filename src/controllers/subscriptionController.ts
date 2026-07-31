@@ -94,6 +94,9 @@ const paymentWebhook = async (req: Request, res: Response) => {
               paymentDate: paymentDate.toDate(),
               expiracyDate: expiracyDate.toDate(),
               mpPaymentID: paymentInfo.data.id,
+              // Monto realmente cobrado por MP; el reporte de ingresos usa esto,
+              // no el precio re-derivado (que puede cambiar entre pago y webhook).
+              amountPaid: data.transaction_amount,
             };
             await axios
               .put(

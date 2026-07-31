@@ -7,8 +7,12 @@ import {
   updateSubscriptionPlan,
   getAllPayments,
 } from "../controllers/subscriptionController";
+import { getPlanPrices } from "../controllers/planPricingController";
 import { checkAuth } from "../middlewares/authMiddleware";
 const router = Router();
+
+// Público: el frontend (home + modal de planes) lee los precios vigentes.
+router.get("/subscription/plan-prices", getPlanPrices);
 
 router.get(
   "/subscription/get/ownerID/:ownerID",

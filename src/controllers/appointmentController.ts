@@ -9,6 +9,8 @@ import {
   SGetAppointmentsByClientID,
   SDeleteAppointment,
   SCancelBooking,
+  SCancelBookingByToken,
+  SGetAppointmentByCancelToken,
   SGetPublicAppsByBusinessID,
   SGetTodayAppointmentsByBusinessID,
   SCreateAllDayAppointments,
@@ -92,12 +94,50 @@ const deleteAppointment = async (req: RequestExtended, res: Response) => {
   }
 };
 
-const cancelBooking = async (req: Request, res: Response) => {
+// Cancelación por el negocio/empleado (autenticado). Siempre reembolsa la seña.
+const cancelBooking = async (req: RequestExtended, res: Response) => {
   try {
-    const canceledBooking = await SCancelBooking(req);
-    res.send(canceledBooking);
+    const user = req.user as JwtContextPayload;
+    let cancelledBy: "owner" | "employee" = "owner";
+    if (user?.role === "employee") {
+      const allowed =
+        (await hasPermission(user.employeeID!, "manage_own_appointments")) ||
+        (await hasPermission(user.employeeID!, "manage_all_appointments"));
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+      cancelledBy = "employee";
+    }
+    const result = await SCancelBooking(
+      req.body._id,
+      cancelledBy,
+      req.body.reason,
+      user?.businessID
+    );
+    if (typeof result === "string") return res.status(400).send({ msg: result });
+    res.send(result);
   } catch (error) {
     handleError(res, "ERROR_CANCEL_BOOKING");
+  }
+};
+
+// Cancelación por el cliente vía link con token (público). No reembolsa la seña.
+const cancelBookingByToken = async (req: Request, res: Response) => {
+  try {
+    const result = await SCancelBookingByToken(req.body.token, req.body.reason);
+    if (typeof result === "string") return res.status(400).send({ msg: result });
+    res.send(result);
+  } catch (error) {
+    handleError(res, "ERROR_CANCEL_BOOKING");
+  }
+};
+
+// Datos del turno para la página pública de cancelación (por token)
+const getCancelInfo = async (req: Request, res: Response) => {
+  try {
+    const info = await SGetAppointmentByCancelToken(req.params.token);
+    if (!info) return res.status(404).send({ msg: "APPOINTMENT_NOT_FOUND" });
+    res.send(info);
+  } catch (error) {
+    handleError(res, "ERROR_GET_APPOINTMENT");
   }
 };
 
@@ -188,6 +228,8 @@ export {
   getAppointmentsByClientID,
   deleteAppointment,
   cancelBooking,
+  cancelBookingByToken,
+  getCancelInfo,
   getPublicAppsByBusinessID,
   getTodayAppointmentsByBusinessID,
   createAllDayAppointments,

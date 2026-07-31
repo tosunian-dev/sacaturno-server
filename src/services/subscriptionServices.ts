@@ -87,7 +87,11 @@ const SUpdateSubscriptionPlan = async ({ body }: Request) => {
     );
     try {
       const planPayment = await PlanPaymentModel.create({
-        price: isPaidPlan(body.subscriptionType) ? getPlanPrice(body.subscriptionType) : 0,
+        price:
+          body.amountPaid ??
+          (isPaidPlan(body.subscriptionType)
+            ? getPlanPrice(body.subscriptionType)
+            : 0),
         businessID: body.businessID,
         userID: updated?.ownerID,
         paymentDate: body.paymentDate,

@@ -18,4 +18,5 @@ export interface IAppointment {
   employeeID?: string | null;
   branchID?: string | null;
   sentReminders?: string[];
+  cancelToken?: string | null;
 }

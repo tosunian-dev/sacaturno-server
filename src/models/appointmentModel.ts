@@ -89,6 +89,11 @@ const AppointmentSchema = new Schema<IAppointment>(
       required: false,
       default: [],
     },
+    cancelToken: {
+      type: String,
+      required: false,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -106,6 +111,8 @@ AppointmentSchema.index({ employeeID: 1, start: 1, end: 1 }, { sparse: true });
 AppointmentSchema.index({ mpPaymentID: 1 }, { sparse: true });
 // Client appointment lookup
 AppointmentSchema.index({ clientID: 1 });
+// Client self-cancellation by emailed token
+AppointmentSchema.index({ cancelToken: 1 }, { sparse: true });
 
 const AppointmentModel = model("appointments", AppointmentSchema);
 export default AppointmentModel;

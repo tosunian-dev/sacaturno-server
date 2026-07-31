@@ -7,6 +7,8 @@ import {
   getAppointmentsByClientID,
   deleteAppointment,
   cancelBooking,
+  cancelBookingByToken,
+  getCancelInfo,
   getPublicAppsByBusinessID,
   getTodayAppointmentsByBusinessID,
   createAllDayAppointments,
@@ -32,8 +34,12 @@ router.get(
 router.get("/appointment/getbyid/:ID", checkAuth, getAppointmentByID);
 /** BOOK APPOINTMENT */
 router.put("/appointment/book", bookAppointment);
-/** CANCEL BOOKING */
-router.put("/appointment/book/cancel", cancelBooking);
+/** CANCEL BOOKING — negocio/empleado (autenticado, reembolsa seña) */
+router.put("/appointment/book/cancel", checkAuth, cancelBooking);
+/** CANCEL BOOKING — cliente vía link con token (público, sin reembolso) */
+router.put("/appointment/book/cancel/token", cancelBookingByToken);
+/** CANCEL INFO — datos del turno para la página pública de cancelación */
+router.get("/appointment/cancel/info/:token", getCancelInfo);
 /** DELETE APPOINTMENT */
 router.delete("/appointment/delete/:ID", checkAuth, deleteAppointment);
 /** GET PUBLIC APPOINTMENTS BY BUSINESS ID */

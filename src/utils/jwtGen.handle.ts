@@ -17,7 +17,7 @@ export interface PlatformAdminJwtPayload {
 
 const jwtGen = (input: string | JwtContextPayload): string => {
     const payload = typeof input === "string" ? { userId: input } : input;
-    return sign(payload, jwt_secret, { expiresIn: "99999999d" });
+    return sign(payload, jwt_secret, { expiresIn: "30d" });
 }
 
 const verifyToken = (token: string) => {
