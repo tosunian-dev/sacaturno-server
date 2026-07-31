@@ -39,6 +39,7 @@ const CancelledAppointmentSchema = new Schema<ICancelledAppointment>(
   {
     timestamps: true,
     versionKey: false,
+    collection: "cancelled_appointments",
   }
 );
 
