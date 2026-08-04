@@ -19,6 +19,7 @@ import timezone from "dayjs/plugin/timezone";
 import advanced from "dayjs/plugin/advancedFormat";
 import DayScheduleModel from "../models/dayScheduleModel";
 import AppointmentScheduleModel from "../models/appointmentScheduleModel";
+import { buildEmail, EmailCallout } from "../utils/emailTemplate";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -51,6 +52,24 @@ dayjs.updateLocale("en", {
     "Sábado",
   ],
 });
+
+const APPT_TZ = "America/Argentina/Buenos_Aires";
+
+// Asegura mayúscula inicial en fechas formateadas (ej: "martes 5 de julio" -> "Martes 5 de julio"),
+// sin depender de que el locale de dayjs esté configurado en mayúscula en tiempo de ejecución.
+const capitalize = (str: string): string =>
+  str.length ? str.charAt(0).toUpperCase() + str.slice(1) : str;
+
+// Asunto unificado para los correos de notificación de un turno:
+// "<etiqueta> | Martes 5 de julio - 18:00 hs a 18:30 hs"
+const apptSubject = (label: string, start: Date, end: Date): string => {
+  const s = dayjs(start).tz(APPT_TZ);
+  return `${label} | ${capitalize(s.format("dddd D [de] MMMM"))} - ${s.format("HH:mm")} hs a ${dayjs(
+    end
+  )
+    .tz(APPT_TZ)
+    .format("HH:mm")} hs`;
+};
 
 const MAX_FUTURE_APPOINTMENTS_PER_BUSINESS = 10000;
 
@@ -117,128 +136,64 @@ const SClientEmailBookedAppointment = async (
   businessData: IBusiness,
   depositAmount?: number
 ) => {
-  const appointmentDate = dayjs(appointmentData.start)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("dddd D [de] MMMM [|] HH:mm [hs]");
+  const s = dayjs(appointmentData.start).tz(APPT_TZ);
+  const fecha = capitalize(s.format("dddd D [de] MMMM"));
   const resend = new Resend(process.env.RESEND_KEY);
 
   const cancelUrl = appointmentData.cancelToken
     ? `${process.env.FRONTEND_URL}/cancelar/${appointmentData.cancelToken}`
     : null;
 
-  const depositSection = depositAmount && depositAmount > 0
-    ? `<div style="margin-top:16px;padding:12px 16px;background-color:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
-        <b style="font-size:13px;color:#166534;display:block;margin-bottom:8px;">&#10003; Seña abonada via Mercado Pago</b>
-        <div style="display:inline-grid;">
-          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Monto de la seña: </b>
-          <span style="margin-bottom:8px;font-size:12px;">$ ${depositAmount.toLocaleString("es-AR")}</span>
-          <b style="font-size:12px;line-height:1;text-transform:uppercase;">ID de pago: </b>
-          <span style="font-size:12px;">${appointmentData.mpPaymentID ?? "-"}</span>
-        </div>
-      </div>`
-    : "";
+  const callouts: EmailCallout[] = [];
+  if (depositAmount && depositAmount > 0) {
+    callouts.push({
+      tone: "success",
+      title: "✓ Seña abonada vía Mercado Pago",
+      text: `$ ${depositAmount.toLocaleString("es-AR")} · ID de pago ${
+        appointmentData.mpPaymentID ?? "-"
+      }`,
+    });
+  }
 
-  const cancelSection = cancelUrl
-    ? `<p style="font-size:14px;line-height:1.5;margin:16px 0">¿Necesitás cancelar? Podés hacerlo desde este link:</p>
-       <a href="${cancelUrl}" style="display:inline-block;padding:10px 18px;background-color:#ffffff;color:#dd4924;border:1px solid #dd4924;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">Cancelar mi turno</a>
-       ${depositAmount && depositAmount > 0 ? `<p style="font-size:12px;line-height:1.5;margin:10px 0 0;color:#888">Al cancelar, la seña abonada no se reembolsa.</p>` : ""}`
-    : "";
+  const afterCtaText = `${
+    cancelUrl && depositAmount && depositAmount > 0
+      ? "Al cancelar, la seña abonada no se reembolsa. "
+      : ""
+  }¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${
+    businessData.phone
+  }</b>.`;
+
+  const html = buildEmail({
+    previewText: `Reservaste un turno en ${businessData.name}`,
+    badge: "Reserva confirmada",
+    bannerTitle: "Reserva confirmada",
+    greeting: `¡Hola ${appointmentData.name}!`,
+    lead: `Reservaste un turno para el <b>${fecha} · ${s.format(
+      "HH:mm"
+    )} hs</b> para el servicio de <b>${appointmentData.service}</b> en <b>${
+      businessData.name
+    }</b>. Estos son los datos de tu reserva:`,
+    rows: [
+      { label: "Nombre y apellido", value: appointmentData.name },
+      { label: "Teléfono", value: String(appointmentData.phone) },
+      { label: "Correo", value: appointmentData.email },
+    ],
+    callouts,
+    cta: cancelUrl
+      ? { label: "Cancelar mi turno", url: cancelUrl, style: "outline" }
+      : undefined,
+    afterCtaText,
+  });
 
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
-    subject: "Reserva de turno",
-    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-    <html dir="ltr" lang="en">
-
-      <head>
-        <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-      </head>
-      <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Acabas de reservar un turno en ${businessData.name} <div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-      </div>
-
-      <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-          <tbody>
-            <tr style="width:100%">
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody style="margin: auto;">
-                    <tr>
-                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                          <tbody style="width:100%">
-                            <tr style="width:100%">
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0;">Hola ${appointmentData.name}!,</p>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Reservaste un turno para el dia <b>${appointmentDate}</b> para el servicio de <b>${appointmentData.service}</b> en <b>${businessData.name}</b> con los siguientes datos:</p>
-
-                        <div style="display:inline-grid;">
-
-                          <b style="font-size:13px;line-height:1;text-transform:uppercase;">Nombre y apellido: </b>
-                          <span style="margin-bottom:10px;font-size:12px;">${appointmentData.name}</span>
-
-                          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono: </b>
-                          <span style="margin-bottom:10px;font-size:12px;">${appointmentData.phone}</span>
-
-                          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo: </b>
-                          <span style="font-size:12px;">${appointmentData.email}<span/>
-
-                        </div>
-
-                        ${depositSection}
-
-                        ${cancelSection}
-
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Si ingresaste algún dato erróneo o tenés una consulta, contactate con la empresa al siguiente número: <b>${businessData.phone}<b/></p>
-
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-          <tbody>
-            <tr>
-              <td>
-
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                  <tbody style="width:100%">
-                    <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </body>
-
-    </html>`,
+    subject: apptSubject(
+      "Reserva confirmada",
+      appointmentData.start,
+      appointmentData.end
+    ),
+    html,
   });
 
   if (error) {
@@ -251,131 +206,65 @@ const SBusinessEmailBookedAppointment = async (
   businessData: IBusiness,
   depositAmount?: number
 ) => {
-  const appointmentDate = dayjs(appointmentData.start)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("dddd D [de] MMMM [|] HH:mm [hs]");
+  const appointmentDate = capitalize(
+    dayjs(appointmentData.start)
+      .tz(APPT_TZ)
+      .format("dddd D [de] MMMM [|] HH:mm [hs]")
+  );
   const resend = new Resend(process.env.RESEND_KEY);
 
-  let employeeRow = "";
+  const rows: { label: string; value: string }[] = [
+    { label: "Fecha y hora", value: appointmentDate },
+    { label: "Servicio", value: appointmentData.service },
+  ];
+
   if (appointmentData.employeeID) {
-    const employee = await EmployeeModel.findById(appointmentData.employeeID).select("name surname");
+    const employee = await EmployeeModel.findById(appointmentData.employeeID).select(
+      "name surname"
+    );
     if (employee) {
-      employeeRow = `<b style="font-size:12px;line-height:1;text-transform:uppercase;">Profesional asignado </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${employee.name} ${employee.surname ?? ""}</span>`;
+      rows.push({
+        label: "Profesional asignado",
+        value: `${employee.name} ${employee.surname ?? ""}`.trim(),
+      });
     }
   }
 
-  const depositSection = depositAmount && depositAmount > 0
-    ? `<div style="margin-top:16px;padding:12px 16px;background-color:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
-        <b style="font-size:13px;color:#166534;display:block;margin-bottom:8px;">&#10003; Seña recibida via Mercado Pago</b>
-        <div style="display:inline-grid;">
-          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Monto de la seña: </b>
-          <span style="margin-bottom:8px;font-size:12px;">$ ${depositAmount.toLocaleString("es-AR")}</span>
-          <b style="font-size:12px;line-height:1;text-transform:uppercase;">ID de pago MP: </b>
-          <span style="font-size:12px;">${appointmentData.mpPaymentID ?? "-"}</span>
-        </div>
-      </div>`
-    : "";
+  rows.push(
+    { label: "Nombre y apellido", value: appointmentData.name },
+    { label: "Teléfono", value: String(appointmentData.phone) },
+    { label: "Correo", value: appointmentData.email }
+  );
+
+  const callouts: EmailCallout[] = [];
+  if (depositAmount && depositAmount > 0) {
+    callouts.push({
+      tone: "success",
+      title: "✓ Seña recibida vía Mercado Pago",
+      text: `$ ${depositAmount.toLocaleString("es-AR")} · ID de pago ${
+        appointmentData.mpPaymentID ?? "-"
+      }`,
+    });
+  }
+
+  const html = buildEmail({
+    previewText: `Recibiste una reserva en ${businessData.name}`,
+    badge: "Nueva reserva",
+    bannerTitle: "Nueva reserva",
+    lead: `Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:`,
+    rows,
+    callouts,
+  });
 
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [businessData.email],
-    subject: "Nueva reserva",
-    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-    <html dir="ltr" lang="en">
-
-      <head>
-        <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-      </head>
-      <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Recibiste una reserva en ${businessData.name}<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-      </div>
-
-      <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-          <tbody>
-            <tr style="width:100%">
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody style="margin: auto;">
-                    <tr>
-                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                          <tbody style="width:100%">
-                            <tr style="width:100%">
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                  <tbody>
-                    <tr>
-                      <td>
-
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0;">Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:</p>
-
-                        <div style="display:inline-grid;">
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Servicio </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.service}</span>
-
-                            ${employeeRow}
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Nombre y apellido </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.name}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo </b>
-                            <span style="font-size:12px;">${appointmentData.email}<span/>
-
-                        </div>
-
-                        ${depositSection}
-
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-          <tbody>
-            <tr>
-              <td>
-
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                  <tbody style="width:100%">
-                    <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </body>
-
-    </html>`,
+    subject: apptSubject(
+      "Nueva reserva",
+      appointmentData.start,
+      appointmentData.end
+    ),
+    html,
   });
 
   if (error) {
@@ -393,121 +282,48 @@ const SEmployeeEmailBookedAppointment = async (
   const employee = await EmployeeModel.findById(appointmentData.employeeID);
   if (!employee || !employee.email) return;
 
-  const appointmentDate = dayjs(appointmentData.start)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("dddd D [de] MMMM [|] HH:mm [hs]");
+  const appointmentDate = capitalize(
+    dayjs(appointmentData.start)
+      .tz(APPT_TZ)
+      .format("dddd D [de] MMMM [|] HH:mm [hs]")
+  );
   const resend = new Resend(process.env.RESEND_KEY);
 
-  const depositSection = depositAmount && depositAmount > 0
-    ? `<div style="margin-top:16px;padding:12px 16px;background-color:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
-        <b style="font-size:13px;color:#166534;display:block;margin-bottom:8px;">&#10003; Seña abonada via Mercado Pago</b>
-        <div style="display:inline-grid;">
-          <b style="font-size:12px;line-height:1;text-transform:uppercase;">Monto de la seña: </b>
-          <span style="margin-bottom:8px;font-size:12px;">$ ${depositAmount.toLocaleString("es-AR")}</span>
-          <b style="font-size:12px;line-height:1;text-transform:uppercase;">ID de pago MP: </b>
-          <span style="font-size:12px;">${appointmentData.mpPaymentID ?? "-"}</span>
-        </div>
-      </div>`
-    : "";
+  const callouts: EmailCallout[] = [];
+  if (depositAmount && depositAmount > 0) {
+    callouts.push({
+      tone: "success",
+      title: "✓ Seña abonada vía Mercado Pago",
+      text: `$ ${depositAmount.toLocaleString("es-AR")} · ID de pago ${
+        appointmentData.mpPaymentID ?? "-"
+      }`,
+    });
+  }
+
+  const html = buildEmail({
+    previewText: `Te asignaron un nuevo turno en ${businessData.name}`,
+    badge: "Nueva reserva",
+    bannerTitle: "Nuevo turno asignado",
+    greeting: `¡Hola ${employee.name}!`,
+    lead: `Te asignaron un nuevo turno en <b>${businessData.name}</b>.`,
+    rows: [
+      { label: "Fecha y hora", value: appointmentDate },
+      { label: "Servicio", value: appointmentData.service },
+      { label: "Cliente", value: appointmentData.name },
+      { label: "Teléfono", value: String(appointmentData.phone) },
+    ],
+    callouts,
+  });
 
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [employee.email],
-    subject: "Nuevo turno asignado",
-    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-    <html dir="ltr" lang="en">
-
-      <head>
-        <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-      </head>
-      <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Te asignaron un nuevo turno en ${businessData.name}<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-      </div>
-
-      <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-          <tbody>
-            <tr style="width:100%">
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody style="margin: auto;">
-                    <tr>
-                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                          <tbody style="width:100%">
-                            <tr style="width:100%">
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                  <tbody>
-                    <tr>
-                      <td>
-
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0;">Hola ${employee.name}!,</p>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Te asignaron un nuevo turno en <b>${businessData.name}</b> con los siguientes datos:</p>
-
-                        <div style="display:inline-grid;">
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Servicio </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.service}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Cliente </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.name}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo </b>
-                            <span style="font-size:12px;">${appointmentData.email}<span/>
-
-                        </div>
-
-                        ${depositSection}
-
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-          <tbody>
-            <tr>
-              <td>
-
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                  <tbody style="width:100%">
-                    <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </body>
-
-    </html>`,
+    subject: apptSubject(
+      "Nueva reserva",
+      appointmentData.start,
+      appointmentData.end
+    ),
+    html,
   });
 
   if (error) {
@@ -717,124 +533,61 @@ const SBusinessCancelledBooking = async (
   hadDeposit: boolean = false,
   refunded: boolean = false
 ) => {
-  const appointmentDate = dayjs(appointmentData.start)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("dddd D [de] MMMM [|] HH:mm [hs]");
+  const appointmentDate = capitalize(
+    dayjs(appointmentData.start)
+      .tz(APPT_TZ)
+      .format("dddd D [de] MMMM [|] HH:mm [hs]")
+  );
   const resend = new Resend(process.env.RESEND_KEY);
 
   const cancelledByLabel =
     cancelledBy === "client" ? "El cliente canceló" : "Se canceló";
-  const depositNote = hadDeposit
-    ? cancelledBy === "client"
-      ? `<div style="margin-top:16px;padding:12px 16px;background-color:#fff7f4;border:1px solid rgb(221,73,36,0.25);border-radius:8px;">
-          <b style="font-size:12px;color:#dd4924;">La seña no se reembolsa: la cancelación la hizo el cliente.</b>
-        </div>`
-      : refunded
-        ? `<div style="margin-top:16px;padding:12px 16px;background-color:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
-            <b style="font-size:12px;color:#166534;">Se reembolsó la seña al cliente vía Mercado Pago.</b>
-          </div>`
-        : `<div style="margin-top:16px;padding:12px 16px;background-color:#fef2f2;border:1px solid #fecaca;border-radius:8px;">
-            <b style="font-size:12px;color:#991b1b;">No se pudo reembolsar la seña automáticamente. Revisá tu cuenta de Mercado Pago y reintentá el reembolso manualmente.</b>
-          </div>`
-    : "";
+
+  const callouts: EmailCallout[] = [];
+  if (hadDeposit) {
+    if (cancelledBy === "client") {
+      callouts.push({
+        tone: "warning",
+        title: "La seña no se reembolsa: la cancelación la hizo el cliente.",
+      });
+    } else if (refunded) {
+      callouts.push({
+        tone: "success",
+        title: "Se reembolsó la seña al cliente vía Mercado Pago.",
+      });
+    } else {
+      callouts.push({
+        tone: "danger",
+        title:
+          "No se pudo reembolsar la seña automáticamente. Revisá tu cuenta de Mercado Pago y reintentá el reembolso manualmente.",
+      });
+    }
+  }
+
+  const html = buildEmail({
+    previewText: "Se canceló una reserva de turno",
+    badge: "Reserva cancelada",
+    bannerTitle: "Reserva cancelada",
+    lead: `${cancelledByLabel} una reserva de turno en tu empresa <b>${businessData.name}</b>. Estos eran los datos de la reserva cancelada:`,
+    rows: [
+      { label: "Fecha y hora", value: appointmentDate },
+      { label: "Servicio", value: appointmentData.service },
+      { label: "Nombre y apellido", value: appointmentData.name },
+      { label: "Teléfono", value: String(appointmentData.phone) },
+      { label: "Correo", value: appointmentData.email },
+    ],
+    callouts,
+  });
 
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [businessData.email],
-    subject: "Reserva cancelada",
-    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-    <html dir="ltr" lang="en">
-    
-      <head>
-        <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-      </head>
-      <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Tu cliente canceló su turno<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-      </div>
-    
-      <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-          <tbody>
-            <tr style="width:100%">
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody style="margin: auto;">
-                    <tr>
-                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                          <tbody style="width:100%">
-                            <tr style="width:100%">
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                  <tbody>
-                    <tr>
-                      <td>
-    
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0;">${cancelledByLabel} una reserva de turno en tu empresa <b>${businessData.name}</b>. Datos de la reserva cancelada:</p>
-
-                        <div style="display:inline-grid;gap:12px">
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Fecha y hora </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentDate}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Servicio </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.service}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Nombre y apellido </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.name}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Telefono </b>
-                            <span style="margin-bottom:8px;font-size:12px;">${appointmentData.phone}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;">Correo </b>
-                            <span style="font-size:12px;">${appointmentData.email}<span/>
-
-                        </div>
-
-                        ${depositNote}
-
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-          <tbody>
-            <tr>
-              <td>
-    
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                  <tbody style="width:100%">
-                    <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </body>
-    
-    </html>`,
+    subject: apptSubject(
+      "Reserva cancelada",
+      appointmentData.start,
+      appointmentData.end
+    ),
+    html,
   });
 
   if (error) {
@@ -850,118 +603,70 @@ const SClientCancelledBooking = async (
   depositAmount: number,
   refunded: boolean
 ) => {
-  const appointmentDate = dayjs(appointmentData.start)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("dddd D [de] MMMM [|] HH:mm [hs]");
+  const appointmentDate = capitalize(
+    dayjs(appointmentData.start)
+      .tz(APPT_TZ)
+      .format("dddd D [de] MMMM [|] HH:mm [hs]")
+  );
   const resend = new Resend(process.env.RESEND_KEY);
 
   const byBusiness = cancelledBy !== "client";
-  const heading = byBusiness
-    ? `<b>${businessData.name}</b> canceló tu turno`
+  const bannerTitle = byBusiness
+    ? `${businessData.name} canceló tu turno`
     : "Cancelaste tu turno";
   const intro = byBusiness
-    ? `Te informamos que <b>${businessData.name}</b> canceló tu turno. Los datos eran:`
-    : `Confirmamos que cancelaste tu turno en <b>${businessData.name}</b>. Los datos eran:`;
+    ? `Te informamos que <b>${businessData.name}</b> canceló tu turno. Estos eran los datos:`
+    : `Confirmamos que cancelaste tu turno en <b>${businessData.name}</b>. Estos eran los datos:`;
 
-  const depositNote = hadDeposit
-    ? byBusiness
-      ? refunded
-        ? `<div style="margin-top:16px;padding:12px 16px;background-color:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
-            <b style="font-size:13px;color:#166534;">Se te reembolsó la seña de $ ${depositAmount.toLocaleString("es-AR")} vía Mercado Pago.</b>
-            <p style="font-size:12px;color:#166534;margin:6px 0 0;">La acreditación puede demorar según tu medio de pago.</p>
-          </div>`
-        : `<div style="margin-top:16px;padding:12px 16px;background-color:#fff7f4;border:1px solid rgb(221,73,36,0.25);border-radius:8px;">
-            <b style="font-size:13px;color:#dd4924;">El reembolso de tu seña está en proceso.</b>
-            <p style="font-size:12px;color:#dd4924;margin:6px 0 0;">Si no lo ves acreditado, contactate con ${businessData.name} al ${businessData.phone}.</p>
-          </div>`
-      : `<div style="margin-top:16px;padding:12px 16px;background-color:#fff7f4;border:1px solid rgb(221,73,36,0.25);border-radius:8px;">
-          <b style="font-size:13px;color:#dd4924;">La seña abonada no se reembolsa al cancelar el turno.</b>
-        </div>`
-    : "";
+  const callouts: EmailCallout[] = [];
+  if (hadDeposit) {
+    if (byBusiness) {
+      if (refunded) {
+        callouts.push({
+          tone: "success",
+          title: `Se te reembolsó la seña de $ ${depositAmount.toLocaleString(
+            "es-AR"
+          )} vía Mercado Pago.`,
+          text: "La acreditación puede demorar según tu medio de pago.",
+        });
+      } else {
+        callouts.push({
+          tone: "warning",
+          title: "El reembolso de tu seña está en proceso.",
+          text: `Si no lo ves acreditado, contactate con ${businessData.name} al ${businessData.phone}.`,
+        });
+      }
+    } else {
+      callouts.push({
+        tone: "warning",
+        title: "La seña abonada no se reembolsa al cancelar el turno.",
+      });
+    }
+  }
+
+  const html = buildEmail({
+    previewText: bannerTitle,
+    badge: "Turno cancelado",
+    bannerTitle,
+    greeting: `¡Hola ${appointmentData.name}!`,
+    lead: intro,
+    rows: [
+      { label: "Servicio", value: appointmentData.service },
+      { label: "Fecha y hora", value: appointmentDate },
+    ],
+    callouts,
+    afterCtaText: `Si tenés alguna consulta, contactate con ${businessData.name} al <b>${businessData.phone}</b>.`,
+  });
 
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
-    subject: byBusiness
-      ? `Tu turno en ${businessData.name} fue cancelado`
-      : "Turno cancelado",
-    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-    <html dir="ltr" lang="en">
-      <head>
-        <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-      </head>
-      <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-          <tbody>
-            <tr style="width:100%">
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody style="margin: auto;">
-                    <tr>
-                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                          <tbody style="width:100%">
-                            <tr style="width:100%">
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <p style="font-size:16px;line-height:1.5;margin:16px 0;font-weight:700;">${heading}</p>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0;">Hola ${appointmentData.name}, ${intro}</p>
-
-                        <div style="margin:20px 0;padding:16px;background-color:#f9fafb;border:1px solid #eee;border-radius:6px;display:inline-grid;gap:4px;">
-                          <b style="font-size:12px;line-height:1;text-transform:uppercase;color:#888;">Servicio</b>
-                          <span style="margin-bottom:10px;font-size:14px;font-weight:700;">${appointmentData.service}</span>
-
-                          <b style="font-size:12px;line-height:1;text-transform:uppercase;color:#888;">Fecha y hora</b>
-                          <span style="font-size:14px;font-weight:700;text-transform:capitalize;">${appointmentDate}</span>
-                        </div>
-
-                        ${depositNote}
-
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Si tenés alguna consulta, contactate con ${businessData.name} al <b>${businessData.phone}</b>.</p>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-          <tbody>
-            <tr>
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                  <tbody style="width:100%">
-                    <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </body>
-    </html>`,
+    subject: apptSubject(
+      "Turno cancelado",
+      appointmentData.start,
+      appointmentData.end
+    ),
+    html,
   });
 
   if (error) {
@@ -1130,124 +835,50 @@ const SClientReminderEmail = async (
     ? `${process.env.FRONTEND_URL}/cancelar/${appointmentData.cancelToken}`
     : null;
 
-  const appointmentDate = dayjs(appointmentData.start)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("dddd D [de] MMMM");
-  const startTime = dayjs(appointmentData.start)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("HH:mm");
-  const endTime = dayjs(appointmentData.end)
-    .tz("America/Argentina/Buenos_Aires")
-    .format("HH:mm");
-
-  const subject =
-    reminderType === "24h"
-      ? `Recordatorio: mañana tenés turno en ${businessData.name}`
-      : reminderType === "2h"
-        ? `Tu turno en ${businessData.name} es en 2 horas`
-        : `Recordatorio de turno en ${businessData.name}`;
+  const s = dayjs(appointmentData.start).tz(APPT_TZ);
+  const appointmentDate = capitalize(s.format("dddd D [de] MMMM"));
+  const startTime = s.format("HH:mm");
+  const endTime = dayjs(appointmentData.end).tz(APPT_TZ).format("HH:mm");
 
   const previewText =
     reminderType === "24h"
       ? `Mañana ${appointmentDate} a las ${startTime} hs`
       : `Hoy a las ${startTime} hs`;
 
+  const bannerTitle =
+    reminderType === "2h" ? "Tu turno es en 2 horas" : "Recordatorio de turno";
+
+  const rows = [
+    { label: "Servicio", value: appointmentData.service },
+    { label: "Fecha", value: appointmentDate },
+    { label: "Horario", value: `${startTime} — ${endTime} hs` },
+  ];
+  if (displayAddress) {
+    rows.push({ label: "Dirección", value: displayAddress });
+  }
+
+  const html = buildEmail({
+    previewText,
+    badge: "Recordatorio",
+    bannerTitle,
+    greeting: `¡Hola ${appointmentData.name}!`,
+    lead: `Te recordamos que tenés un turno reservado en <b>${businessData.name}</b> para el <b>${appointmentDate}</b> de <b>${startTime}</b> a <b>${endTime} hs</b>.`,
+    rows,
+    cta: cancelUrl
+      ? { label: "Cancelar mi turno", url: cancelUrl, style: "outline" }
+      : undefined,
+    afterCtaText: `Ante cualquier consulta, contactate con el negocio al: <b>${businessData.phone}</b>.`,
+  });
+
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
-    subject,
-    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-    <html dir="ltr" lang="en">
-      <head>
-        <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-      </head>
-      <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">${previewText}<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-      </div>
-
-      <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-          <tbody>
-            <tr style="width:100%">
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                  <tbody style="margin: auto;">
-                    <tr>
-                      <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                          <tbody style="width:100%">
-                            <tr style="width:100%">
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                              <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                  <tbody>
-                    <tr>
-                      <td>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0;">Hola ${appointmentData.name}!,</p>
-                        <p style="font-size:14px;line-height:1.5;margin:16px 0">Te recordamos que tenés un turno reservado en <b>${businessData.name}</b> para el día <b>${appointmentDate}</b> de <b>${startTime}</b> a <b>${endTime} hs</b>.</p>
-
-                        <div style="margin:20px 0;padding:16px;background-color:#fff7f4;border:1px solid rgb(221,73,36,0.25);border-left:4px solid rgb(221,73,36);border-radius:6px;">
-                          <div style="display:inline-grid;gap:4px;">
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;color:#888;">Servicio</b>
-                            <span style="margin-bottom:10px;font-size:14px;font-weight:700;">${appointmentData.service}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;color:#888;">Fecha</b>
-                            <span style="margin-bottom:10px;font-size:14px;font-weight:700;text-transform:capitalize;">${appointmentDate}</span>
-
-                            <b style="font-size:12px;line-height:1;text-transform:uppercase;color:#888;">Horario</b>
-                            <span style="font-size:14px;font-weight:700;">${startTime} — ${endTime} hs</span>
-                          </div>
-                        </div>
-
-                        ${displayAddress
-                          ? `<p style="font-size:14px;line-height:1.5;margin:16px 0">&#128205; <b>Dirección:</b> ${displayAddress}</p>`
-                          : ""}
-
-                        ${cancelUrl
-                          ? `<p style="font-size:14px;line-height:1.5;margin:16px 0">Si necesitás cancelar, podés hacerlo desde este link:</p>
-                             <a href="${cancelUrl}" style="display:inline-block;padding:10px 18px;background-color:#ffffff;color:#dd4924;border:1px solid #dd4924;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;">Cancelar mi turno</a>
-                             <p style="font-size:14px;line-height:1.5;margin:16px 0">Ante cualquier consulta, contactate con el negocio al: <b>${businessData.phone}</b></p>`
-                          : `<p style="font-size:14px;line-height:1.5;margin:16px 0">Si necesitás cancelar o tenés alguna consulta, contactate con el negocio al: <b>${businessData.phone}</b></p>`}
-
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-          <tbody>
-            <tr>
-              <td>
-                <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                  <tbody style="width:100%">
-                    <tr style="width:100%">
-                      <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                    </tr>
-                  </tbody>
-                </table>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </body>
-    </html>`,
+    subject: apptSubject(
+      "Recordatorio",
+      appointmentData.start,
+      appointmentData.end
+    ),
+    html,
   });
 
   if (error) {

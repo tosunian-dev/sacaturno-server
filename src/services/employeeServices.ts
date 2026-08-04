@@ -11,6 +11,7 @@ import SubscriptionModel from "../models/subscriptionModel";
 import { getPlanLimits } from "../config/planLimits";
 import dayjs from "dayjs";
 import { Resend } from "resend";
+import { buildEmail } from "../utils/emailTemplate";
 import { encrypt } from "../utils/pwEncrypt.handle";
 import { jwtGen } from "../utils/jwtGen.handle";
 
@@ -69,55 +70,15 @@ const SSendInvitationEmail = async (
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [toEmail],
     subject: `${businessName} te invitó a SacaTurno`,
-    html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html dir="ltr" lang="es">
-<head><meta content="text/html; charset=UTF-8" http-equiv="Content-Type" /></head>
-<body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-    <tbody>
-      <tr style="width:100%">
-        <td>
-          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;padding:30px">
-            <tbody style="margin:auto">
-              <tr><td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td></tr>
-            </tbody>
-          </table>
-          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-            <tbody><tr><td>
-              <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                <tbody style="width:100%"><tr style="width:100%">
-                  <td style="border-bottom:1px solid rgba(238,238,238,0);width:249px"></td>
-                  <td style="border-bottom:1px solid rgb(221,73,36);width:102px"></td>
-                  <td style="border-bottom:1px solid rgba(238,238,238,0);width:249px"></td>
-                </tr></tbody>
-              </table>
-            </td></tr></tbody>
-          </table>
-          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top:20px">
-            <tbody><tr><td>
-              <p style="font-size:15px;line-height:1.5;margin:16px 0;font-weight:600;">¡Hola ${employeeName}!</p>
-              <p style="font-size:14px;line-height:1.5;margin:16px 0;"><b>${businessName}</b> te invitó a ser parte de su equipo en SacaTurno. Para aceptar la invitación y activar tu cuenta, hacé click en el botón de abajo.</p>
-              <p style="font-size:13px;line-height:1.5;margin:16px 0;color:#888">Esta invitación vence en 72 horas.</p>
-              <div style="width:100%;height:fit-content;display:flex;justify-content:center;margin-top:2.4rem;">
-                <a href="${link}" target="_blank" style="margin:auto;background-color:rgb(221,73,36);border-radius:8px;color:rgb(255,255,255);display:inline-block;font-size:12px;font-weight:bold;line-height:40px;padding:0px 16px;text-align:center;text-transform:uppercase;text-decoration:none;width:auto;">Aceptar invitación</a>
-              </div>
-            </td></tr></tbody>
-          </table>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-    <tbody><tr><td>
-      <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-        <tbody style="width:100%"><tr style="width:100%">
-          <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-        </tr></tbody>
-      </table>
-    </td></tr></tbody>
-  </table>
-</body>
-</html>`,
+    html: buildEmail({
+      previewText: `${businessName} te invitó a su equipo en SacaTurno`,
+      badge: "Invitación",
+      bannerTitle: "Te invitaron a un equipo",
+      greeting: `¡Hola ${employeeName}!`,
+      lead: `<b>${businessName}</b> te invitó a ser parte de su equipo en SacaTurno. Aceptá la invitación para activar tu cuenta.`,
+      cta: { label: "Aceptar invitación", url: link, style: "solid" },
+      afterCtaText: "Esta invitación vence en <b>72 horas</b>.",
+    }),
   });
 };
 

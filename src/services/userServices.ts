@@ -5,6 +5,7 @@ import { Request, Response } from "express";
 import { jwtGen, verifyToken } from "../utils/jwtGen.handle";
 import fs from "fs";
 import { Resend } from "resend";
+import { buildEmail } from "../utils/emailTemplate";
 import { JwtPayload } from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
 import ServiceModel from "../models/serviceModel";
@@ -89,80 +90,19 @@ const SSendConfirmationEmail = async (userData: IUser) => {
       from: "SacaTurno <noresponder@sacaturno.com.ar>",
       to: [userData.email],
       subject: "Confirmá tu cuenta en SacaTurno",
-      html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-      <html dir="ltr" lang="en">
-      
-        <head>
-          <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-        </head>
-        <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Confirmá tu dirección de email en SacaTurno<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-        </div>
-      
-        <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-            <tbody>
-              <tr style="width:100%">
-                <td>
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                    <tbody style="margin: auto;">
-                      <tr>
-                        <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                    <tbody>
-                      <tr>
-                        <td>
-                          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                            <tbody style="width:100%">
-                              <tr style="width:100%">
-                                <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                                <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                                <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                    <tbody>
-                      <tr>
-                        <td>
-                          <p style="font-size:15px;line-height:1.5;margin:16px 0;font-weight:600;">¡Hola ${userData.name}!</p>
-                          <p style="font-size:14px;line-height:1.5;margin:16px 0;">Te damos la bienvenida a SacaTurno. Para comenzar a utilizar el servicio necesitamos confirmar que tu cuenta pertenece a este correo. Para eso, <b>hacé click en el botón debajo</b> y comenzá a gestionar tus turnos.</p>
-                          <div style="width:100%;height:fit-content;display:flex;justify-content:center;margin-top:2.4rem;">
-                            <a href="https://sacaturno.com.ar/verify/${token}" target="_blank"  style="margin:auto;background-color: rgb(221, 73, 36);border-radius: 8px;color: rgb(255, 255, 255);display: inline-block;font-size: 12px;font-weight: bold;line-height: 40px;padding: 0px 16px;text-align: center;text-transform: uppercase;text-decoration: none;width: auto;">Confirmar cuenta</a>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-            <tbody>
-              <tr>
-                <td>
-      
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                    <tbody style="width:100%">
-                      <tr style="width:100%">
-                        <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </body>
-      
-      </html>`,
+      html: buildEmail({
+        previewText: "Confirmá tu dirección de email en SacaTurno",
+        badge: "Bienvenida",
+        bannerTitle: "Bienvenido a SacaTurno",
+        greeting: `¡Hola ${userData.name}!`,
+        lead: "Te damos la bienvenida a SacaTurno. Para empezar a gestionar tus turnos, necesitamos confirmar que esta cuenta te pertenece.",
+        cta: {
+          label: "Confirmar cuenta",
+          url: `https://sacaturno.com.ar/verify/${token}`,
+          style: "solid",
+        },
+        afterCtaText: "Si no creaste esta cuenta, podés ignorar este correo.",
+      }),
     });
 
     if (error) {
@@ -328,80 +268,19 @@ const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
         from: "SacaTurno <noresponder@sacaturno.com.ar>",
         to: [user.email],
         subject: "Recuperar contraseña",
-        html: `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-      <html dir="ltr" lang="en">
-      
-        <head>
-          <meta content="text/html; charset=UTF-8" http-equiv="Content-Type" />
-        </head>
-        <div style="display:none;overflow:hidden;line-height:1px;opacity:0;max-height:0;max-width:0">Restablecé tu contraseña<div> ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿ ‌​‍‎‏﻿</div>
-        </div>
-      
-        <body style="background-color:white;font-family:HelveticaNeue,Helvetica,Arial,sans-serif">
-          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:30px auto;background-color:#ffffff">
-            <tbody>
-              <tr style="width:100%">
-                <td>
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="display:flex;justify-content:center;aling-items:center;padding:30px">
-                    <tbody style="margin: auto;">
-                      <tr>
-                        <td><img src="https://i.imgur.com/25dldvi.png" style="display:block;outline:none;border:none;text-decoration:none" width="114" /></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="width:100%;display:flex">
-                    <tbody>
-                      <tr>
-                        <td>
-                          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                            <tbody style="width:100%">
-                              <tr style="width:100%">
-                                <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                                <td data-id="__react-email-column" style="border-bottom:1px solid rgb(221, 73, 36);width:102px"></td>
-                                <td data-id="__react-email-column" style="border-bottom:1px solid rgb(238,238,238,0);width:249px"></td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:5px 20px 10px 20px;margin-top: 20px;">
-                    <tbody>
-                      <tr>
-                        <td>
-                          <p style="font-size:15px;line-height:1.5;margin:16px 0;font-weight:600;">Recuperar cuenta</p>
-                          <p style="font-size:14px;line-height:1.5;margin:16px 0;">Para restablecer tu contraseña debes <b>hacer click en el botón debajo</b> Luego serás redireccionado a tu panel donde podrás configurar tu nueva contraseña.</p>
-                          <div style="width:100%;height:fit-content;display:flex;justify-content:center;margin-top:2.4rem;">
-                            <a href="https://sacaturno.com.ar/login/recovery/set/${token}" target="_blank"  style="margin:auto;background-color: rgb(221, 73, 36);border-radius: 8px;color: rgb(255, 255, 255);display: inline-block;font-size: 12px;font-weight: bold;line-height: 40px;padding: 0px 16px;text-align: center;text-transform: uppercase;text-decoration: none;width: auto;">Restablecer contraseña</a>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="max-width:580px;margin:0 auto">
-            <tbody>
-              <tr>
-                <td>
-      
-                  <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation">
-                    <tbody style="width:100%">
-                      <tr style="width:100%">
-                        <p style="font-size:14px;line-height:24px;margin:16px 0;text-align:center;color:#706a7b">©2026 SacaTurno. Todos los derechos reservados.</p>
-                      </tr>
-                    </tbody>
-                  </table>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </body>
-      
-      </html>`,
+        html: buildEmail({
+          previewText: "Restablecé tu contraseña",
+          badge: "Seguridad",
+          bannerTitle: "Restablecé tu contraseña",
+          greeting: "Recuperar contraseña",
+          lead: "Recibimos un pedido para restablecer tu contraseña. Hacé click en el botón y creá una nueva.",
+          cta: {
+            label: "Restablecer contraseña",
+            url: `https://sacaturno.com.ar/login/recovery/set/${token}`,
+            style: "solid",
+          },
+          afterCtaText: "Si no fuiste vos, ignorá este mensaje: tu contraseña sigue igual.",
+        }),
       });
       if (error) {
         return console.error({ error });
