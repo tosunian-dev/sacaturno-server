@@ -55,7 +55,7 @@ const PREHEADER_SPACER =
 // country code themselves — usually +1 — instead of +54.
 export const telLink = (phone: string | number): string => {
   const digits = String(phone).replace(/\D/g, "");
-  return `<a href="tel:+54${digits}" style="color:inherit;text-decoration:inherit;">+54 ${phone}</a>`;
+  return `<a href="tel:+54${digits}">+54 ${phone}</a>`;
 };
 
 const buildRows = (rows: EmailRow[]): string => {

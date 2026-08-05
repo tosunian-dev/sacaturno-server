@@ -58,10 +58,15 @@ const SDeleteScheduleAppointment = async ({ params }: Request) => {
   return deletedAppointment;
 };
 
+// forEach no espera los callbacks async: la respuesta salía antes de que Mongo
+// terminara de escribir, así que refrescar la vista justo después devolvía los
+// horarios viejos.
 const SEditManyAppointments = async ({ body }: Request) => {
-  body.forEach(async (day:IDaySchedule) => {
-    await DayScheduleModel.findByIdAndUpdate(day._id, day)
-  });
+  await Promise.all(
+    (body as IDaySchedule[]).map((day) =>
+      DayScheduleModel.findByIdAndUpdate(day._id, day)
+    )
+  );
 };
 
 export {
