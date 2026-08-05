@@ -18,6 +18,7 @@ import {
   SGetDashboardStats,
   SGetAnalyticsData,
   SGetAppointmentHistory,
+  SGetCancelledAppointments,
 } from "../services/appointmentServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 import { JwtContextPayload } from "../utils/jwtGen.handle";
@@ -220,6 +221,22 @@ const getAppointmentHistory = async (req: RequestExtended, res: Response) => {
   }
 };
 
+const getCancelledAppointments = async (req: RequestExtended, res: Response) => {
+  try {
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed = await hasPermission(user.employeeID!, "view_stats");
+      if (!allowed || user.businessID !== req.params.businessID) return res.status(403).send("PERMISSION_DENIED");
+    } else if (user?.role === "owner") {
+      if (!(await verifyOwnerAccess(user, req.params.businessID))) return res.status(403).send("FORBIDDEN");
+    }
+    const data = await SGetCancelledAppointments(req);
+    res.send(data);
+  } catch (error) {
+    handleError(res, "ERROR_GET_CANCELLED");
+  }
+};
+
 export {
   createAppointment,
   bookAppointment,
@@ -236,4 +253,5 @@ export {
   getDashboardStats,
   getAnalyticsData,
   getAppointmentHistory,
+  getCancelledAppointments,
 };

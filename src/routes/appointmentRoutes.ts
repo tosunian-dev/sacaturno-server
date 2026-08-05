@@ -15,6 +15,7 @@ import {
   getDashboardStats,
   getAnalyticsData,
   getAppointmentHistory,
+  getCancelledAppointments,
 } from "../controllers/appointmentController";
 import { checkAuth } from "../middlewares/authMiddleware";
 
@@ -55,5 +56,7 @@ router.get("/appointment/stats/:businessID", checkAuth, getDashboardStats);
 router.get("/appointment/analytics/:businessID", checkAuth, getAnalyticsData);
 /** GET FULL APPOINTMENT HISTORY BY BUSINESS ID */
 router.get("/appointment/history/:businessID", checkAuth, getAppointmentHistory);
+/** GET CANCELLED APPOINTMENTS HISTORY BY BUSINESS ID */
+router.get("/appointment/cancelled/:businessID", checkAuth, getCancelledAppointments);
 
 export default router;

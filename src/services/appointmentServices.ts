@@ -811,6 +811,48 @@ const SGetAppointmentHistory = async ({ params }: Request) => {
   return appointments;
 };
 
+const CANCELLED_HISTORY_LIMIT = 500;
+
+// Historial de cancelaciones con los nombres de sucursal y profesional ya
+// resueltos: el registro histórico guarda sólo los IDs, y el panel necesita
+// mostrarlos aunque la sucursal se haya dado de baja después.
+const SGetCancelledAppointments = async ({ params }: Request) => {
+  const { businessID } = params;
+  const cancellations = await CancelledAppointmentModel.find({ businessID })
+    .sort({ cancelledAt: -1 })
+    .limit(CANCELLED_HISTORY_LIMIT)
+    .lean();
+
+  const uniqIDs = (values: (string | null | undefined)[]): string[] =>
+    values.reduce<string[]>((acc, v) => {
+      if (v && !acc.includes(v)) acc.push(v);
+      return acc;
+    }, []);
+
+  const employeeIDs = uniqIDs(cancellations.map((c) => c.employeeID));
+  const branchIDs = uniqIDs(cancellations.map((c) => c.branchID));
+
+  const [employees, branches] = await Promise.all([
+    employeeIDs.length
+      ? EmployeeModel.find({ _id: { $in: employeeIDs } }).select("name surname").lean()
+      : [],
+    branchIDs.length
+      ? BranchModel.find({ _id: { $in: branchIDs } }).select("name").lean()
+      : [],
+  ]);
+
+  const employeeNames = new Map(
+    employees.map((e) => [String(e._id), `${e.name} ${e.surname ?? ""}`.trim()])
+  );
+  const branchNames = new Map(branches.map((b) => [String(b._id), b.name]));
+
+  return cancellations.map((c) => ({
+    ...c,
+    employeeName: c.employeeID ? employeeNames.get(String(c.employeeID)) ?? null : null,
+    branchName: c.branchID ? branchNames.get(String(c.branchID)) ?? null : null,
+  }));
+};
+
 // Una vez que el negocio tiene sucursales cargadas, ellas son la única fuente de
 // verdad para direcciones — businessData.address queda oculta para evitar mostrar
 // una ubicación genérica/ambigua cuando hay varios locales.
@@ -921,4 +963,5 @@ export {
   SGetDashboardStats,
   SGetAnalyticsData,
   SGetAppointmentHistory,
+  SGetCancelledAppointments,
 }
