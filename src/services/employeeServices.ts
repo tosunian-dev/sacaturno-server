@@ -71,7 +71,7 @@ const SSendInvitationEmail = async (
     to: [toEmail],
     subject: `${businessName} te invitó a SacaTurno`,
     html: buildEmail({
-      previewText: `${businessName} te invitó a su equipo en SacaTurno`,
+      previewText: "Aceptá la invitación para unirte al equipo",
       badge: "Invitación",
       bannerTitle: "Te invitaron a un equipo",
       greeting: `¡Hola ${employeeName}!`,

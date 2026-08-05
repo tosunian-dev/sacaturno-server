@@ -91,7 +91,7 @@ const SSendConfirmationEmail = async (userData: IUser) => {
       to: [userData.email],
       subject: "Confirmá tu cuenta en SacaTurno",
       html: buildEmail({
-        previewText: "Confirmá tu dirección de email en SacaTurno",
+        previewText: "Activá tu cuenta para continuar con tu registro",
         badge: "Bienvenida",
         bannerTitle: "Bienvenido a SacaTurno",
         greeting: `¡Hola ${userData.name}!`,
@@ -267,15 +267,15 @@ const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
       const { error } = await resend.emails.send({
         from: "SacaTurno <noresponder@sacaturno.com.ar>",
         to: [user.email],
-        subject: "Recuperar contraseña",
+        subject: "Restablecé tu contraseña",
         html: buildEmail({
-          previewText: "Restablecé tu contraseña",
+          previewText: "Recuperá el acceso a tu cuenta",
           badge: "Seguridad",
-          bannerTitle: "Restablecé tu contraseña",
-          greeting: "Recuperar contraseña",
-          lead: "Recibimos un pedido para restablecer tu contraseña. Hacé click en el botón y creá una nueva.",
+          bannerTitle: "¿Olvidaste tu contraseña?",
+          greeting: `¡Hola ${user.name}!`,
+          lead: "Recibimos un pedido para restablecer la contraseña de tu cuenta. Creá una nueva desde el botón de acá abajo.",
           cta: {
-            label: "Restablecer contraseña",
+            label: "Crear nueva contraseña",
             url: `https://sacaturno.com.ar/login/recovery/set/${token}`,
             style: "solid",
           },

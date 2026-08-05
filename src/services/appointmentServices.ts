@@ -19,7 +19,7 @@ import timezone from "dayjs/plugin/timezone";
 import advanced from "dayjs/plugin/advancedFormat";
 import DayScheduleModel from "../models/dayScheduleModel";
 import AppointmentScheduleModel from "../models/appointmentScheduleModel";
-import { buildEmail, EmailCallout, telLink } from "../utils/emailTemplate";
+import { buildEmail, EmailCallout, EmailRow, telLink } from "../utils/emailTemplate";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -59,17 +59,6 @@ const APPT_TZ = "America/Argentina/Buenos_Aires";
 // sin depender de que el locale de dayjs esté configurado en mayúscula en tiempo de ejecución.
 const capitalize = (str: string): string =>
   str.length ? str.charAt(0).toUpperCase() + str.slice(1) : str;
-
-// Asunto unificado para los correos de notificación de un turno:
-// "<etiqueta> | Martes 5 de julio - 18:00 hs a 18:30 hs"
-const apptSubject = (label: string, start: Date, end: Date): string => {
-  const s = dayjs(start).tz(APPT_TZ);
-  return `${label} | ${capitalize(s.format("dddd D [de] MMMM"))} - ${s.format("HH:mm")} hs a ${dayjs(
-    end
-  )
-    .tz(APPT_TZ)
-    .format("HH:mm")} hs`;
-};
 
 const MAX_FUTURE_APPOINTMENTS_PER_BUSINESS = 10000;
 
@@ -131,6 +120,36 @@ const SBookAppointment = async (data: IAppointment) => {
   return appointmentData;
 };
 
+// Sucursal y profesional sólo se muestran cuando el turno los tiene asignados:
+// los negocios que no usan esas funciones no ven filas vacías.
+const appointmentContextRows = async (
+  appointmentData: IAppointment
+): Promise<EmailRow[]> => {
+  const rows: EmailRow[] = [];
+
+  if (appointmentData.branchID) {
+    const branch = await BranchModel.findOne({
+      _id: appointmentData.branchID,
+      deletedAt: null,
+    }).select("name");
+    if (branch?.name) rows.push({ label: "Sucursal", value: branch.name });
+  }
+
+  if (appointmentData.employeeID) {
+    const employee = await EmployeeModel.findById(appointmentData.employeeID).select(
+      "name surname"
+    );
+    if (employee) {
+      rows.push({
+        label: "Profesional",
+        value: `${employee.name} ${employee.surname ?? ""}`.trim(),
+      });
+    }
+  }
+
+  return rows;
+};
+
 const SClientEmailBookedAppointment = async (
   appointmentData: IAppointment,
   businessData: IBusiness,
@@ -139,6 +158,8 @@ const SClientEmailBookedAppointment = async (
   const s = dayjs(appointmentData.start).tz(APPT_TZ);
   const fecha = capitalize(s.format("dddd D [de] MMMM"));
   const resend = new Resend(process.env.RESEND_KEY);
+  const displayAddress = await SResolveAppointmentAddress(appointmentData, businessData);
+  const contextRows = await appointmentContextRows(appointmentData);
 
   const cancelUrl = appointmentData.cancelToken
     ? `${process.env.FRONTEND_URL}/cancelar/${appointmentData.cancelToken}`
@@ -155,25 +176,33 @@ const SClientEmailBookedAppointment = async (
     });
   }
 
-  const afterCtaText = `${
+  // 0 = "Sin restricción": el cliente puede autocancelar siempre, así que no hay
+  // plazo concreto que informar.
+  const windowHours = businessData.cancellationWindowHours ?? 24;
+  const depositNote =
     cancelUrl && depositAmount && depositAmount > 0
-      ? "Al cancelar, la seña abonada no se reembolsa. "
-      : ""
-  }¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${telLink(
+      ? windowHours > 0
+        ? `Al cancelar, la política de cancelación del negocio no permite el reembolso de la seña. Podés cancelar online hasta <b>${windowHours} horas antes</b> del turno. `
+        : "Al cancelar, la política de cancelación del negocio no permite el reembolso de la seña. "
+      : "";
+
+  const afterCtaText = `${depositNote}¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${telLink(
     businessData.phone
   )}</b>.`;
 
   const html = buildEmail({
-    previewText: `Reservaste un turno en ${businessData.name}`,
+    previewText: `El ${fecha} a las ${s.format("HH:mm")} hs tenés turno para ${
+      appointmentData.service
+    }`,
     badge: "Reserva confirmada",
     bannerTitle: "Reserva confirmada",
     greeting: `¡Hola ${appointmentData.name}!`,
-    lead: `Reservaste un turno para el <b>${fecha} · ${s.format(
-      "HH:mm"
-    )} hs</b> para el servicio de <b>${appointmentData.service}</b> en <b>${
-      businessData.name
-    }</b>. Estos son los datos de tu reserva:`,
+    lead: `Tu turno en <b>${businessData.name}</b> quedó confirmado. Estos son los datos:`,
     rows: [
+      { label: "Servicio", value: appointmentData.service },
+      { label: "Fecha y hora", value: `${fecha} | ${s.format("HH:mm")} hs` },
+      ...contextRows,
+      ...(displayAddress ? [{ label: "Dirección", value: displayAddress }] : []),
       { label: "Nombre y apellido", value: appointmentData.name },
       { label: "Teléfono", value: telLink(appointmentData.phone) },
       { label: "Correo", value: appointmentData.email },
@@ -188,11 +217,7 @@ const SClientEmailBookedAppointment = async (
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
-    subject: apptSubject(
-      "Reserva confirmada",
-      appointmentData.start,
-      appointmentData.end
-    ),
+    subject: `Reserva confirmada en ${businessData.name}`,
     html,
   });
 
@@ -201,17 +226,17 @@ const SClientEmailBookedAppointment = async (
   }
 };
 
-const SBusinessEmailBookedAppointment = async (
+// Negocio y empleado reciben exactamente el mismo aviso de reserva: se arma una
+// sola vez y cada función sólo cambia el destinatario.
+const buildBookingNotification = async (
   appointmentData: IAppointment,
   businessData: IBusiness,
   depositAmount?: number
 ) => {
-  const appointmentDate = capitalize(
-    dayjs(appointmentData.start)
-      .tz(APPT_TZ)
-      .format("dddd D [de] MMMM [|] HH:mm [hs]")
-  );
-  const resend = new Resend(process.env.RESEND_KEY);
+  const s = dayjs(appointmentData.start).tz(APPT_TZ);
+  const isToday = s.isSame(dayjs().tz(APPT_TZ), "date");
+  const whenLabel = isToday ? "Hoy" : capitalize(s.format("dddd D [de] MMMM"));
+  const appointmentDate = capitalize(s.format("dddd D [de] MMMM [|] HH:mm [hs]"));
 
   const rows: { label: string; value: string }[] = [
     { label: "Fecha y hora", value: appointmentDate },
@@ -248,22 +273,35 @@ const SBusinessEmailBookedAppointment = async (
   }
 
   const html = buildEmail({
-    previewText: `Recibiste una reserva en ${businessData.name}`,
+    previewText: `${whenLabel} - ${s.format("HH:mm")} hs | ${appointmentData.service} para ${
+      appointmentData.name
+    }`,
     badge: "Nueva reserva",
     bannerTitle: "Nueva reserva",
-    lead: `Recibiste una reserva de turno en tu empresa <b>${businessData.name}</b> con los siguientes datos:`,
+    lead: `Se reservó un turno en <b>${businessData.name}</b> con los siguientes datos:`,
     rows,
     callouts,
   });
 
+  return { subject: `Nueva reserva en ${businessData.name}`, html };
+};
+
+const SBusinessEmailBookedAppointment = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness,
+  depositAmount?: number
+) => {
+  const resend = new Resend(process.env.RESEND_KEY);
+  const { subject, html } = await buildBookingNotification(
+    appointmentData,
+    businessData,
+    depositAmount
+  );
+
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [businessData.email],
-    subject: apptSubject(
-      "Nueva reserva",
-      appointmentData.start,
-      appointmentData.end
-    ),
+    subject,
     html,
   });
 
@@ -279,50 +317,20 @@ const SEmployeeEmailBookedAppointment = async (
 ) => {
   if (!appointmentData.employeeID) return;
 
-  const employee = await EmployeeModel.findById(appointmentData.employeeID);
+  const employee = await EmployeeModel.findById(appointmentData.employeeID).select("email");
   if (!employee || !employee.email) return;
 
-  const appointmentDate = capitalize(
-    dayjs(appointmentData.start)
-      .tz(APPT_TZ)
-      .format("dddd D [de] MMMM [|] HH:mm [hs]")
-  );
   const resend = new Resend(process.env.RESEND_KEY);
-
-  const callouts: EmailCallout[] = [];
-  if (depositAmount && depositAmount > 0) {
-    callouts.push({
-      tone: "success",
-      title: "✓ Seña abonada vía Mercado Pago",
-      text: `$ ${depositAmount.toLocaleString("es-AR")} · ID de pago ${
-        appointmentData.mpPaymentID ?? "-"
-      }`,
-    });
-  }
-
-  const html = buildEmail({
-    previewText: `Te asignaron un nuevo turno en ${businessData.name}`,
-    badge: "Nueva reserva",
-    bannerTitle: "Nuevo turno asignado",
-    greeting: `¡Hola ${employee.name}!`,
-    lead: `Te asignaron un nuevo turno en <b>${businessData.name}</b>.`,
-    rows: [
-      { label: "Fecha y hora", value: appointmentDate },
-      { label: "Servicio", value: appointmentData.service },
-      { label: "Cliente", value: appointmentData.name },
-      { label: "Teléfono", value: telLink(appointmentData.phone) },
-    ],
-    callouts,
-  });
+  const { subject, html } = await buildBookingNotification(
+    appointmentData,
+    businessData,
+    depositAmount
+  );
 
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [employee.email],
-    subject: apptSubject(
-      "Nueva reserva",
-      appointmentData.start,
-      appointmentData.end
-    ),
+    subject,
     html,
   });
 
@@ -526,6 +534,17 @@ const SGetAppointmentByCancelToken = async (token: string) => {
   };
 };
 
+// Preview de los correos de cancelación: fecha y hora del turno, más los mismos
+// datos de contexto (sucursal, profesional) que muestra el detalle.
+const cancellationPreview = async (appointmentData: IAppointment): Promise<string> => {
+  const s = dayjs(appointmentData.start).tz(APPT_TZ);
+  const extras = (await appointmentContextRows(appointmentData)).map((r) => r.value);
+  return [
+    `${capitalize(s.format("dddd D [de] MMMM"))} - ${s.format("HH:mm")} hs`,
+    ...extras,
+  ].join(" | ");
+};
+
 const SBusinessCancelledBooking = async (
   appointmentData: IAppointment,
   businessData: IBusiness,
@@ -565,7 +584,7 @@ const SBusinessCancelledBooking = async (
   }
 
   const html = buildEmail({
-    previewText: "Se canceló una reserva de turno",
+    previewText: await cancellationPreview(appointmentData),
     badge: "Reserva cancelada",
     bannerTitle: "Reserva cancelada",
     lead: `${cancelledByLabel} una reserva de turno en tu empresa <b>${businessData.name}</b>. Estos eran los datos de la reserva cancelada:`,
@@ -582,11 +601,7 @@ const SBusinessCancelledBooking = async (
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [businessData.email],
-    subject: apptSubject(
-      "Reserva cancelada",
-      appointmentData.start,
-      appointmentData.end
-    ),
+    subject: "Se canceló una reserva de turno",
     html,
   });
 
@@ -613,7 +628,7 @@ const SClientCancelledBooking = async (
   const byBusiness = cancelledBy !== "client";
   const bannerTitle = byBusiness
     ? `${businessData.name} canceló tu turno`
-    : "Cancelaste tu turno";
+    : `Cancelaste tu turno en ${businessData.name}`;
   const intro = byBusiness
     ? `Te informamos que <b>${businessData.name}</b> canceló tu turno. Estos eran los datos:`
     : `Confirmamos que cancelaste tu turno en <b>${businessData.name}</b>. Estos eran los datos:`;
@@ -645,7 +660,7 @@ const SClientCancelledBooking = async (
   }
 
   const html = buildEmail({
-    previewText: bannerTitle,
+    previewText: await cancellationPreview(appointmentData),
     badge: "Turno cancelado",
     bannerTitle,
     greeting: `¡Hola ${appointmentData.name}!`,
@@ -661,11 +676,7 @@ const SClientCancelledBooking = async (
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
-    subject: apptSubject(
-      "Turno cancelado",
-      appointmentData.start,
-      appointmentData.end
-    ),
+    subject: bannerTitle,
     html,
   });
 
@@ -830,54 +841,57 @@ const SClientReminderEmail = async (
 ) => {
   const resend = new Resend(process.env.RESEND_KEY);
   const displayAddress = await SResolveAppointmentAddress(appointmentData, businessData);
-
-  const cancelUrl = appointmentData.cancelToken
-    ? `${process.env.FRONTEND_URL}/cancelar/${appointmentData.cancelToken}`
-    : null;
+  const contextRows = await appointmentContextRows(appointmentData);
 
   const s = dayjs(appointmentData.start).tz(APPT_TZ);
   const appointmentDate = capitalize(s.format("dddd D [de] MMMM"));
   const startTime = s.format("HH:mm");
   const endTime = dayjs(appointmentData.end).tz(APPT_TZ).format("HH:mm");
 
-  const previewText =
+  // Las ventanas activas son 24h / 5h / 1h (ver utils/appointmentReminders.ts)
+  const whenLabel =
     reminderType === "24h"
-      ? `Mañana ${appointmentDate} a las ${startTime} hs`
+      ? "Mañana"
+      : reminderType === "1h"
+      ? "En una hora"
       : `Hoy a las ${startTime} hs`;
 
-  const bannerTitle =
-    reminderType === "2h" ? "Tu turno es en 2 horas" : "Recordatorio de turno";
+  const previewText = `${whenLabel} tenés turno para ${appointmentData.service}`;
 
-  const rows = [
+  const bannerTitle =
+    reminderType === "24h"
+      ? "Tu turno es mañana"
+      : reminderType === "1h"
+      ? "Tu turno es en una hora"
+      : "Tu turno es hoy";
+
+  const rows: EmailRow[] = [
     { label: "Servicio", value: appointmentData.service },
     { label: "Fecha", value: appointmentDate },
     { label: "Horario", value: `${startTime} — ${endTime} hs` },
+    ...contextRows,
   ];
   if (displayAddress) {
     rows.push({ label: "Dirección", value: displayAddress });
   }
 
+  // Sin botón de cancelar: los recordatorios salen a 24h/5h/1h y la ventana mínima
+  // de autocancelación es de 24h, así que el link ya estaría vencido. El cliente
+  // cancela desde el mail de confirmación de la reserva.
   const html = buildEmail({
     previewText,
     badge: "Recordatorio",
     bannerTitle,
     greeting: `¡Hola ${appointmentData.name}!`,
-    lead: `Te recordamos que tenés un turno reservado en <b>${businessData.name}</b> para el <b>${appointmentDate}</b> de <b>${startTime}</b> a <b>${endTime} hs</b>.`,
+    lead: `Te esperamos en <b>${businessData.name}</b>. Estos son los datos de tu turno:`,
     rows,
-    cta: cancelUrl
-      ? { label: "Cancelar mi turno", url: cancelUrl, style: "outline" }
-      : undefined,
-    afterCtaText: `Ante cualquier consulta, contactate con el negocio al: <b>${telLink(businessData.phone)}</b>.`,
+    afterCtaText: `Si no podés asistir o tenés alguna consulta, contactate con el negocio al: <b>${telLink(businessData.phone)}</b>.`,
   });
 
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
-    subject: apptSubject(
-      "Recordatorio",
-      appointmentData.start,
-      appointmentData.end
-    ),
+    subject: `Recordatorio | ${appointmentDate} - ${startTime} hs en ${businessData.name}`,
     html,
   });
 

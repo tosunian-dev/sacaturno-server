@@ -76,7 +76,7 @@ export const handlePlanExpiracy = async () => {
             to: [ownerData.email],
             subject: "Tu prueba gratuita ha caducado",
             html: buildEmail({
-              previewText: "Tu prueba gratuita caducó — suscribite a un plan",
+              previewText: "Actualizá tu plan para continuar",
               badge: "Prueba caducada",
               bannerTitle: "Tu prueba gratuita caducó",
               greeting: `¡Hola ${ownerData?.name}!`,
