@@ -134,7 +134,7 @@ export const buildEmail = (m: EmailModel): string => {
           <tbody>
             <tr>
               <td background="https://sacaturno.com.ar/email-header-bg.jpg" class="st-banner" style="background-color:#c0421c;background-image:url('https://sacaturno.com.ar/email-header-bg.jpg');background-repeat:no-repeat;background-position:center center;background-size:cover;padding:26px 26px 28px;border-radius:16px 16px 0 0;">
-                <img src="https://sacaturno.com.ar/sacaturno-white-email.png" alt="SacaTurno" width="148" height="37" style="display:block;border:0;outline:none;text-decoration:none;width:148px;height:37px;" />
+                <img src="https://sacaturno.com.ar/sacaturno-white-email.png" alt="SacaTurno" width="124" height="31" style="display:block;border:0;outline:none;text-decoration:none;width:124px;height:31px;" />
                 <h1 style="margin:17px 0 0;font-family:${FONT};color:#ffffff;font-size:23px;line-height:1.15;letter-spacing:-0.015em;font-weight:700;text-shadow:0 1px 2px rgba(90,28,6,0.2);">${m.bannerTitle}</h1>
               </td>
             </tr>
