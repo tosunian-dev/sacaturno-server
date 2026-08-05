@@ -19,7 +19,7 @@ import timezone from "dayjs/plugin/timezone";
 import advanced from "dayjs/plugin/advancedFormat";
 import DayScheduleModel from "../models/dayScheduleModel";
 import AppointmentScheduleModel from "../models/appointmentScheduleModel";
-import { buildEmail, EmailCallout } from "../utils/emailTemplate";
+import { buildEmail, EmailCallout, telLink } from "../utils/emailTemplate";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -159,9 +159,9 @@ const SClientEmailBookedAppointment = async (
     cancelUrl && depositAmount && depositAmount > 0
       ? "Al cancelar, la seña abonada no se reembolsa. "
       : ""
-  }¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${
+  }¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${telLink(
     businessData.phone
-  }</b>.`;
+  )}</b>.`;
 
   const html = buildEmail({
     previewText: `Reservaste un turno en ${businessData.name}`,
@@ -175,7 +175,7 @@ const SClientEmailBookedAppointment = async (
     }</b>. Estos son los datos de tu reserva:`,
     rows: [
       { label: "Nombre y apellido", value: appointmentData.name },
-      { label: "Teléfono", value: String(appointmentData.phone) },
+      { label: "Teléfono", value: telLink(appointmentData.phone) },
       { label: "Correo", value: appointmentData.email },
     ],
     callouts,
@@ -232,7 +232,7 @@ const SBusinessEmailBookedAppointment = async (
 
   rows.push(
     { label: "Nombre y apellido", value: appointmentData.name },
-    { label: "Teléfono", value: String(appointmentData.phone) },
+    { label: "Teléfono", value: telLink(appointmentData.phone) },
     { label: "Correo", value: appointmentData.email }
   );
 
@@ -310,7 +310,7 @@ const SEmployeeEmailBookedAppointment = async (
       { label: "Fecha y hora", value: appointmentDate },
       { label: "Servicio", value: appointmentData.service },
       { label: "Cliente", value: appointmentData.name },
-      { label: "Teléfono", value: String(appointmentData.phone) },
+      { label: "Teléfono", value: telLink(appointmentData.phone) },
     ],
     callouts,
   });
@@ -573,7 +573,7 @@ const SBusinessCancelledBooking = async (
       { label: "Fecha y hora", value: appointmentDate },
       { label: "Servicio", value: appointmentData.service },
       { label: "Nombre y apellido", value: appointmentData.name },
-      { label: "Teléfono", value: String(appointmentData.phone) },
+      { label: "Teléfono", value: telLink(appointmentData.phone) },
       { label: "Correo", value: appointmentData.email },
     ],
     callouts,
@@ -633,7 +633,7 @@ const SClientCancelledBooking = async (
         callouts.push({
           tone: "warning",
           title: "El reembolso de tu seña está en proceso.",
-          text: `Si no lo ves acreditado, contactate con ${businessData.name} al ${businessData.phone}.`,
+          text: `Si no lo ves acreditado, contactate con ${businessData.name} al ${telLink(businessData.phone)}.`,
         });
       }
     } else {
@@ -655,7 +655,7 @@ const SClientCancelledBooking = async (
       { label: "Fecha y hora", value: appointmentDate },
     ],
     callouts,
-    afterCtaText: `Si tenés alguna consulta, contactate con ${businessData.name} al <b>${businessData.phone}</b>.`,
+    afterCtaText: `Si tenés alguna consulta, contactate con ${businessData.name} al <b>${telLink(businessData.phone)}</b>.`,
   });
 
   const { error } = await resend.emails.send({
@@ -867,7 +867,7 @@ const SClientReminderEmail = async (
     cta: cancelUrl
       ? { label: "Cancelar mi turno", url: cancelUrl, style: "outline" }
       : undefined,
-    afterCtaText: `Ante cualquier consulta, contactate con el negocio al: <b>${businessData.phone}</b>.`,
+    afterCtaText: `Ante cualquier consulta, contactate con el negocio al: <b>${telLink(businessData.phone)}</b>.`,
   });
 
   const { error } = await resend.emails.send({
