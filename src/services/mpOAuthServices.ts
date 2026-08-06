@@ -6,6 +6,7 @@ import { getPlanLimits } from "../config/planLimits";
 
 const MP_OAUTH_URL = "https://auth.mercadopago.com/authorization";
 const MP_TOKEN_URL = "https://api.mercadopago.com/oauth/token";
+const MP_USERS_ME_URL = "https://api.mercadopago.com/users/me";
 
 // Genera la URL de autorización de MP
 // el usuario es redirigido acá para vincular su cuenta con la app
@@ -46,13 +47,16 @@ const SHandleOAuthCallback = async (code: string, businessID: string) => {
     let mpAccountName: string | null = null;
     let mpAccountEmail: string | null = null;
     try {
-        const { data: mpUser } = await axios.get("https://api.mercadopago.com/v1/users/me", {
+        const { data: mpUser } = await axios.get(MP_USERS_ME_URL, {
             headers: { Authorization: `Bearer ${data.access_token}` },
         });
-        mpAccountName = `${mpUser.first_name ?? ""} ${mpUser.last_name ?? ""}`.trim() || null;
+        // en cuentas de empresa first_name/last_name suelen venir vacíos, el nickname siempre viene
+        mpAccountName =
+            `${mpUser.first_name ?? ""} ${mpUser.last_name ?? ""}`.trim() || mpUser.nickname || null;
         mpAccountEmail = mpUser.email ?? null;
-    } catch {
-        // no bloqueamos el flujo si falla la consulta de perfil
+    } catch (e: any) {
+        // no bloqueamos el flujo si falla la consulta de perfil, pero lo dejamos registrado
+        console.error("MP /users/me falló:", e?.response?.status, e?.response?.data ?? e?.message);
     }
 
     const business = await BusinessModel.findByIdAndUpdate(
