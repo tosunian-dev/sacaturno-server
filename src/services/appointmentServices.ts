@@ -103,13 +103,22 @@ const SBookAppointment = async (data: IAppointment) => {
   }
   // Token para que el cliente pueda autocancelar desde el link del email
   const bookingData = { ...data, cancelToken: crypto.randomBytes(24).toString("hex") };
+  // El filtro por "unbooked" + hold vencido es lo que hace atómica la reserva:
+  // dos clientes que confirman el mismo horario a la vez no pueden pisarse, y
+  // tampoco se puede robar un turno que alguien está pagando en Mercado Pago.
+  const now = new Date();
   const appointmentData = await AppointmentModel.findOneAndUpdate(
-    { _id: data._id },
+    {
+      _id: data._id,
+      status: "unbooked",
+      $or: [{ depositHoldUntil: null }, { depositHoldUntil: { $lte: now } }],
+    },
     bookingData,
     { new: true }
   );
   if (appointmentData === null) {
-    return "APPOINTMENT_NOT_FOUND";
+    const exists = await AppointmentModel.exists({ _id: data._id });
+    return exists ? "SLOT_TAKEN" : "APPOINTMENT_NOT_FOUND";
   }
   const businessData = businessGuard ?? await BusinessModel.findById(appointmentData.businessID);
   if (businessData !== null) {
@@ -942,6 +951,119 @@ const SClientReminderEmail = async (
   }
 };
 
+// El pago de la seña aprobó pero el horario ya estaba tomado (webhook demorado o
+// pendiente que se pasó del plazo). Se devolvió la plata: le explicamos al cliente
+// qué pasó, porque de otro modo solo ve un cargo y un reembolso sin motivo.
+const SClientDepositRefundedSlotTaken = async (
+  businessData: IBusiness,
+  appointmentStart: Date,
+  serviceName: string,
+  depositAmount: number,
+  payerName: string,
+  payerEmail: string,
+  refunded: boolean
+) => {
+  const appointmentDate = capitalize(
+    dayjs(appointmentStart).tz(APPT_TZ).format("dddd D [de] MMMM [|] HH:mm [hs]")
+  );
+  const resend = new Resend(process.env.RESEND_KEY);
+
+  const html = buildEmail({
+    previewText: `No pudimos confirmar tu turno en ${businessData.name}`,
+    badge: "Turno no confirmado",
+    bannerTitle: "No pudimos confirmar tu turno",
+    greeting: `Hola ${payerName}!`,
+    lead: `Mientras se procesaba tu pago, alguien más reservó ese horario en <b>${businessData.name}</b>. Tu turno no quedó confirmado.`,
+    rows: [
+      { label: "Horario solicitado", value: appointmentDate },
+      { label: "Servicio", value: serviceName },
+      { label: "Seña", value: `AR$ ${depositAmount.toLocaleString("es-AR")}` },
+    ],
+    callouts: [
+      refunded
+        ? {
+            tone: "success",
+            title: "Ya te devolvimos la seña por Mercado Pago.",
+            text: "Puede tardar unos días hábiles en verse reflejada, según tu medio de pago.",
+          }
+        : {
+            tone: "danger",
+            title: "No pudimos procesar la devolución automáticamente.",
+            text: "Escribinos y lo resolvemos a la brevedad.",
+          },
+    ],
+    cta: {
+      label: "Elegir otro horario",
+      url: `${process.env.FRONTEND_URL}/${businessData.slug}`,
+    },
+  });
+
+  const { error } = await resend.emails.send({
+    from: "SacaTurno <noresponder@sacaturno.com.ar>",
+    to: [payerEmail],
+    subject: `Turno no confirmado | ${appointmentDate}`,
+    html,
+  });
+
+  if (error) {
+    return console.error({ error });
+  }
+};
+
+// Copia al negocio del caso anterior: si el cliente los llama, tienen que saber
+// de qué les habla.
+const SBusinessDepositRefundedSlotTaken = async (
+  businessData: IBusiness,
+  appointmentStart: Date,
+  serviceName: string,
+  depositAmount: number,
+  payerName: string,
+  payerEmail: string,
+  refunded: boolean
+) => {
+  const appointmentDate = capitalize(
+    dayjs(appointmentStart).tz(APPT_TZ).format("dddd D [de] MMMM [|] HH:mm [hs]")
+  );
+  const resend = new Resend(process.env.RESEND_KEY);
+
+  const html = buildEmail({
+    previewText: `Se devolvió una seña: el horario ya estaba tomado`,
+    badge: "Seña devuelta",
+    bannerTitle: "Se devolvió una seña",
+    lead: `Un cliente pagó la seña de un horario que, para cuando Mercado Pago nos confirmó el pago, ya estaba reservado por otra persona. <b>El turno original no se modificó.</b>`,
+    rows: [
+      { label: "Horario", value: appointmentDate },
+      { label: "Servicio", value: serviceName },
+      { label: "Cliente", value: payerName },
+      { label: "Correo", value: payerEmail },
+      { label: "Monto", value: `AR$ ${depositAmount.toLocaleString("es-AR")}` },
+    ],
+    callouts: [
+      refunded
+        ? {
+            tone: "success",
+            title: "La devolución se hizo automáticamente desde tu cuenta de Mercado Pago.",
+          }
+        : {
+            tone: "danger",
+            title: "No se pudo devolver la seña automáticamente.",
+            text: "Revisá tu cuenta de Mercado Pago y hacé la devolución a mano.",
+          },
+    ],
+  });
+
+  const { error } = await resend.emails.send({
+    from: "SacaTurno <noresponder@sacaturno.com.ar>",
+    to: [businessData.email],
+    subject: `Seña devuelta | ${appointmentDate}`,
+    html,
+  });
+
+  if (error) {
+    return console.error({ error });
+  }
+};
+
 export {
   SCreateAppointment,
   SBookAppointment,
@@ -964,4 +1086,6 @@ export {
   SGetAnalyticsData,
   SGetAppointmentHistory,
   SGetCancelledAppointments,
+  SClientDepositRefundedSlotTaken,
+  SBusinessDepositRefundedSlotTaken,
 }

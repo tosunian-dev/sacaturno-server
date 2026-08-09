@@ -46,6 +46,12 @@ const createAppointment = async (req: RequestExtended, res: Response) => {
 const bookAppointment = async ({ body }: Request, res: Response) => {
   try {
     const appointmentBooked = await SBookAppointment(body);
+    // Los strings son errores semánticos: antes salían con 200 y el cliente los
+    // interpretaba como reserva exitosa.
+    if (typeof appointmentBooked === "string") {
+      const status = appointmentBooked === "SLOT_TAKEN" ? 409 : 400;
+      return res.status(status).send({ msg: appointmentBooked });
+    }
     res.send(appointmentBooked);
   } catch (error) {
     handleError(res, "ERROR_BOOKING_APPOINTMENT");

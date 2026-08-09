@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import { handleError } from "../utils/error.handle";
-import { SCreateDepositPreference, SDepositWebhook } from "../services/depositServices";
+import {
+  SCreateDepositPreference,
+  SDepositWebhook,
+  SReleaseDepositHold,
+  SGetDepositStatus,
+} from "../services/depositServices";
 
 const createDepositPreference = async (req: Request, res: Response) => {
   try {
@@ -26,4 +31,35 @@ const depositWebhook = async (req: Request, res: Response) => {
   }
 };
 
-export { createDepositPreference, depositWebhook };
+// Llamado desde el navegador cuando el cliente vuelve de MP sin haber pagado:
+// libera el turno enseguida en vez de esperar a que venza la reserva temporal.
+const releaseDepositHold = async (req: Request, res: Response) => {
+  try {
+    const { appointmentID, preferenceID } = req.body;
+    const result = await SReleaseDepositHold(appointmentID, preferenceID);
+    res.send({ msg: result });
+  } catch (error) {
+    handleError(res, "ERROR_RELEASE_HOLD");
+  }
+};
+
+const getDepositStatus = async (req: Request, res: Response) => {
+  try {
+    const paymentID =
+      typeof req.query.paymentID === "string" ? req.query.paymentID : undefined;
+    const result = await SGetDepositStatus(req.params.appointmentID, paymentID);
+    if (typeof result === "string") {
+      return res.status(404).send({ msg: result });
+    }
+    res.send(result);
+  } catch (error) {
+    handleError(res, "ERROR_GET_DEPOSIT_STATUS");
+  }
+};
+
+export {
+  createDepositPreference,
+  depositWebhook,
+  releaseDepositHold,
+  getDepositStatus,
+};

@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { checkAuth } from "../middlewares/authMiddleware";
 import { connectOAuth, oauthCallback, disconnectOAuth } from "../controllers/mpOAuthController";
-import { createDepositPreference, depositWebhook } from "../controllers/depositController";
+import {
+  createDepositPreference,
+  depositWebhook,
+  releaseDepositHold,
+  getDepositStatus,
+} from "../controllers/depositController";
 
 const router = Router();
 
@@ -21,5 +26,9 @@ router.delete("/mp/oauth/disconnect", checkAuth, disconnectOAuth);
 router.post("/mp/deposit/create-preference", createDepositPreference);
 // webhook mp para actualizar estado de la seña cuando se paga/rechaza/etc en mp
 router.post("/mp/deposit/webhook", depositWebhook);
+// libera la reserva temporal cuando el cliente vuelve de mp sin pagar
+router.post("/mp/deposit/release-hold", releaseDepositHold);
+// estado real del turno segun nuestra base, para la pantalla de retorno
+router.get("/mp/deposit/status/:appointmentID", getDepositStatus);
 
 export default router;

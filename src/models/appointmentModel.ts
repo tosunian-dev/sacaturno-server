@@ -74,6 +74,11 @@ const AppointmentSchema = new Schema<IAppointment>(
       required: false,
       default: null,
     },
+    depositHoldUntil: {
+      type: Date,
+      required: false,
+      default: null,
+    },
     employeeID: {
       type: String,
       required: false,
