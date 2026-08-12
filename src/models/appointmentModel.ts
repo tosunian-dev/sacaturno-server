@@ -89,6 +89,21 @@ const AppointmentSchema = new Schema<IAppointment>(
       required: false,
       default: null,
     },
+    // Distingue "el cliente eligió a este profesional" de "el turno venía con él
+    // desde la plantilla y al cliente le dio igual". Sin esto, reasignar es
+    // indistinguible entre romper una expectativa y un trámite interno.
+    employeeChosenByClient: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    // Sello de que el negocio cambió profesional o sucursal después de reservado:
+    // habilita al cliente a cancelar con reembolso, porque el cambio no fue suyo.
+    reassignedAt: {
+      type: Date,
+      required: false,
+      default: null,
+    },
     sentReminders: {
       type: [String],
       required: false,

@@ -49,6 +49,8 @@ export const generateAppointments = async (businessData: IBusiness) => {
         phone: 0,
         name: "",
         status: "unbooked",
+        employeeID: appointment.employeeID ?? null,
+        branchID: appointment.branchID ?? null,
       };
       // ALMACENAR TURNO EN APPOINTMENTS
       await AppointmentModel.create(appointmentObj);

@@ -15,6 +15,9 @@ import {
 } from "../services/employeeServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
+// Asignación inválida de servicios/sucursales — mismo tratamiento en alta y edición.
+const ASSIGNMENT_ERRORS = ["SERVICE_REQUIRED", "INVALID_SERVICE", "BRANCH_REQUIRED", "INVALID_BRANCH"];
+
 const getEmployeesByBusiness = async (req: Request, res: Response) => {
   try {
     const employees = await SGetEmployeesByBusiness(req);
@@ -36,6 +39,9 @@ const createEmployee = async (req: Request, res: Response) => {
     if (employee === "EMPLOYEE_ALREADY_EXISTS") {
       return res.status(409).send("EMPLOYEE_ALREADY_EXISTS");
     }
+    if (typeof employee === "string" && ASSIGNMENT_ERRORS.includes(employee)) {
+      return res.status(422).send(employee);
+    }
     res.send(employee);
   } catch (error) {
     handleError(res, "ERROR_CREATE_EMPLOYEE");
@@ -47,6 +53,9 @@ const updateEmployee = async (req: Request, res: Response) => {
     const employee = await SUpdateEmployee(req);
     if (employee === "EMPLOYEE_NOT_FOUND") {
       return res.status(404).send("EMPLOYEE_NOT_FOUND");
+    }
+    if (typeof employee === "string" && ASSIGNMENT_ERRORS.includes(employee)) {
+      return res.status(422).send(employee);
     }
     res.send(employee);
   } catch (error) {

@@ -124,9 +124,61 @@ const SBookAppointment = async (data: IAppointment) => {
   if (businessData !== null) {
     SClientEmailBookedAppointment(appointmentData, businessData);
     SBusinessEmailBookedAppointment(appointmentData, businessData);
-    SEmployeeEmailBookedAppointment(appointmentData, businessData);
+    if (appointmentData.employeeID) {
+      SEmployeeEmailBookedAppointment(appointmentData, businessData);
+    } else {
+      SPoolEmailBookedAppointment(appointmentData, businessData);
+    }
   }
   return appointmentData;
+};
+
+// Turno del pool: nadie quedó asignado, así que se avisa a quienes podrían
+// tomarlo. Filtrar por servicio y sucursal evita mandarle el aviso a todo el
+// equipo — un mail que no te toca entrena a ignorar los que sí.
+const SGetEligibleEmployeesForAppointment = async (appointmentData: IAppointment) => {
+  const service = await ServiceModel.findOne({
+    businessID: appointmentData.businessID,
+    name: appointmentData.service,
+  }).select("_id");
+
+  const query: Record<string, unknown> = {
+    businessID: appointmentData.businessID,
+    status: "active",
+  };
+  if (service) query.services = String(service._id);
+  if (appointmentData.branchID) query.branches = appointmentData.branchID;
+
+  return EmployeeModel.find(query).select("email name");
+};
+
+const SPoolEmailBookedAppointment = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness,
+  depositAmount?: number
+) => {
+  const employees = await SGetEligibleEmployeesForAppointment(appointmentData);
+  const recipients = employees.map((e) => e.email).filter((email): email is string => !!email);
+  if (recipients.length === 0) return;
+
+  const resend = new Resend(process.env.RESEND_KEY);
+  const { subject, html } = await buildBookingNotification(
+    appointmentData,
+    businessData,
+    depositAmount,
+    true
+  );
+
+  // Un envío por destinatario: `to` con varias direcciones las expone entre sí.
+  for (const email of recipients) {
+    const { error } = await resend.emails.send({
+      from: "SacaTurno <noresponder@sacaturno.com.ar>",
+      to: [email],
+      subject,
+      html,
+    });
+    if (error) console.error({ error });
+  }
 };
 
 // Sucursal y profesional sólo se muestran cuando el turno los tiene asignados:
@@ -240,7 +292,8 @@ const SClientEmailBookedAppointment = async (
 const buildBookingNotification = async (
   appointmentData: IAppointment,
   businessData: IBusiness,
-  depositAmount?: number
+  depositAmount?: number,
+  isPool = false
 ) => {
   const s = dayjs(appointmentData.start).tz(APPT_TZ);
   const isToday = s.isSame(dayjs().tz(APPT_TZ), "date");
@@ -271,6 +324,13 @@ const buildBookingNotification = async (
   );
 
   const callouts: EmailCallout[] = [];
+  if (isPool) {
+    callouts.push({
+      tone: "warning",
+      title: "Este turno no tiene profesional asignado",
+      text: "El horario ya está ocupado. Podés tomarlo desde el panel, en Mis turnos.",
+    });
+  }
   if (depositAmount && depositAmount > 0) {
     callouts.push({
       tone: "success",
@@ -293,6 +353,76 @@ const buildBookingNotification = async (
   });
 
   return { subject: `Nueva reserva en ${businessData.name}`, html };
+};
+
+// Aviso al cliente de que el negocio le cambió el profesional y/o la sucursal
+// de un turno ya reservado. La salida es cancelar CON reembolso: el cambio no lo
+// provocó él, así que no puede regir la política habitual de autocancelación.
+const SClientReassignedBooking = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness,
+  changes: { employeeChanged: boolean; branchChanged: boolean }
+) => {
+  if (!appointmentData.email) return;
+
+  const s = dayjs(appointmentData.start).tz(APPT_TZ);
+  const fecha = capitalize(s.format("dddd D [de] MMMM"));
+  const displayAddress = await SResolveAppointmentAddress(appointmentData, businessData);
+  const contextRows = await appointmentContextRows(appointmentData);
+
+  const cancelUrl = appointmentData.cancelToken
+    ? `${process.env.FRONTEND_URL}/cancelar/${appointmentData.cancelToken}`
+    : null;
+
+  const whatChanged =
+    changes.employeeChanged && changes.branchChanged
+      ? "el profesional y el lugar de atención"
+      : changes.branchChanged
+        ? "el lugar de atención"
+        : "el profesional que te va a atender";
+
+  const rows: EmailRow[] = [
+    { label: "Fecha y hora", value: `${fecha} | ${s.format("HH:mm")} hs` },
+    { label: "Servicio", value: appointmentData.service },
+    ...contextRows,
+  ];
+  if (displayAddress) rows.push({ label: "Dirección", value: displayAddress });
+
+  const callouts: EmailCallout[] = [
+    {
+      tone: "warning",
+      title: `Cambió ${whatChanged}`,
+      text: "El día y la hora de tu turno no se modificaron.",
+    },
+  ];
+
+  const html = buildEmail({
+    previewText: `Cambió ${whatChanged} de tu turno del ${fecha}`,
+    badge: "Cambio en tu turno",
+    bannerTitle: "Hay un cambio en tu turno",
+    greeting: `Hola ${appointmentData.name}`,
+    lead: `<b>${businessData.name}</b> modificó ${whatChanged} de tu turno. Te dejamos cómo queda:`,
+    rows,
+    callouts,
+    cta: cancelUrl
+      ? { label: "No me sirve, cancelar turno", url: cancelUrl, style: "outline" }
+      : undefined,
+    afterCtaText: cancelUrl
+      ? `Si el cambio no te sirve podés cancelar sin costo y <b>se te devuelve la seña</b>, porque el cambio no lo hiciste vos. ¿Dudas? Escribile al negocio: <b>${telLink(
+          businessData.phone
+        )}</b>.`
+      : `¿Dudas? Escribile al negocio: <b>${telLink(businessData.phone)}</b>.`,
+  });
+
+  const resend = new Resend(process.env.RESEND_KEY);
+  const { error } = await resend.emails.send({
+    from: "SacaTurno <noresponder@sacaturno.com.ar>",
+    to: [appointmentData.email],
+    subject: `Cambio en tu turno | ${fecha} - ${s.format("HH:mm")} hs`,
+    html,
+  });
+
+  if (error) console.error({ error });
 };
 
 const SBusinessEmailBookedAppointment = async (
@@ -346,6 +476,133 @@ const SEmployeeEmailBookedAppointment = async (
   if (error) {
     return console.error({ error });
   }
+};
+
+// Asignar / reasignar profesional y sucursal de un turno ya creado. Es la
+// contraparte de SEditScheduleAppointment para turnos reales: la usan el panel
+// del dueño, el botón "Asignarme el turno" del empleado y el asignador masivo.
+const SAssignAppointment = async (
+  appointmentID: string,
+  fields: { employeeID?: string | null; branchID?: string | null },
+  // Presente cuando el actor es un empleado sin permiso sobre toda la agenda:
+  // sólo puede tomar un turno libre para sí mismo o soltar el suyo.
+  restrictToEmployeeID?: string,
+  // Decisión del panel, no del backend: el negocio puede haber avisado ya por
+  // WhatsApp y un segundo aviso automático sólo confunde.
+  notifyClient = false
+) => {
+  const appointment = await AppointmentModel.findById(appointmentID);
+  if (!appointment) return "APPOINTMENT_NOT_FOUND";
+
+  if (restrictToEmployeeID) {
+    if (fields.branchID !== undefined) return "PERMISSION_DENIED";
+    const wantsSelf = fields.employeeID === restrictToEmployeeID;
+    const wantsRelease = !fields.employeeID;
+    if (wantsSelf && appointment.employeeID) return "ALREADY_ASSIGNED";
+    if (wantsRelease && appointment.employeeID !== restrictToEmployeeID) {
+      return "PERMISSION_DENIED";
+    }
+    if (!wantsSelf && !wantsRelease) return "PERMISSION_DENIED";
+  }
+
+  const nextEmployeeID =
+    fields.employeeID === undefined ? appointment.employeeID : fields.employeeID || null;
+  const nextBranchID =
+    fields.branchID === undefined ? appointment.branchID : fields.branchID || null;
+
+  if (nextEmployeeID) {
+    const hasConflict = await SCheckEmployeeAppointmentConflict(
+      nextEmployeeID,
+      appointment.start,
+      appointment.end,
+      appointmentID
+    );
+    if (hasConflict) return "EMPLOYEE_CONFLICT";
+
+    const employee = await EmployeeModel.findById(nextEmployeeID).select("branches status");
+    if (!employee) return "EMPLOYEE_NOT_FOUND";
+    if (employee.status !== "active") return "EMPLOYEE_NOT_ACTIVE";
+    if (nextBranchID && !(employee.branches ?? []).includes(nextBranchID)) {
+      return "EMPLOYEE_NOT_IN_BRANCH";
+    }
+  }
+
+  const allowedFields: Record<string, unknown> = {};
+  if (fields.employeeID !== undefined) allowedFields.employeeID = nextEmployeeID;
+  if (fields.branchID !== undefined) allowedFields.branchID = nextBranchID;
+
+  const employeeChanged = nextEmployeeID !== (appointment.employeeID ?? null);
+  const branchChanged = nextBranchID !== (appointment.branchID ?? null);
+  const isBooked = appointment.status === "booked";
+  const affectsClient = isBooked && (employeeChanged || branchChanged);
+
+  // El sello sólo se pone si al cliente le cambió algo: es lo que habilita el
+  // reembolso al cancelar, y un turno libre no tiene a quién compensar.
+  if (affectsClient) allowedFields.reassignedAt = new Date();
+
+  const updated = await AppointmentModel.findByIdAndUpdate(
+    appointmentID,
+    { $set: allowedFields },
+    { new: true }
+  );
+
+  if (updated && affectsClient && notifyClient) {
+    const business = await BusinessModel.findById(updated.businessID);
+    if (business) {
+      SClientReassignedBooking(updated, business, { employeeChanged, branchChanged });
+    }
+  }
+
+  return updated;
+};
+
+// Turnos ya generados a partir de una plantilla. No hay FK entre ambos, así que
+// la identidad es (negocio, día de la semana, hora de inicio, servicio). Se filtra
+// en JS y no en Mongo porque extraer día y hora locales dentro de la query obliga
+// a operadores de fecha con timezone, y el generador las construye con dayjs local.
+const SFindAppointmentsFromTemplate = async (template: {
+  businessID: string;
+  dayNumber: number;
+  start: Date;
+  service: string;
+}) => {
+  const startHHmm = dayjs(template.start).format("HH:mm");
+  const candidates = await AppointmentModel.find({
+    businessID: template.businessID,
+    service: template.service,
+    start: { $gte: new Date() },
+  }).select("_id start end status name employeeID branchID employeeChosenByClient");
+
+  const matches = candidates.filter(
+    (a) =>
+      dayjs(a.start).day() === template.dayNumber &&
+      dayjs(a.start).format("HH:mm") === startHHmm
+  );
+
+  return {
+    unbooked: matches.filter((a) => a.status !== "booked"),
+    booked: matches.filter((a) => a.status === "booked"),
+  };
+};
+
+// Asignación en lote sobre turnos reales. Igual que la de plantillas: secuencial
+// y con resumen parcial, para que un conflicto no invalide el resto.
+const SAssignManyAppointments = async (
+  appointmentIDs: string[],
+  fields: { employeeID?: string | null; branchID?: string | null },
+  notifyClient = false
+) => {
+  const assigned: string[] = [];
+  const failed: { _id: string; reason: string }[] = [];
+
+  for (const id of appointmentIDs) {
+    const result = await SAssignAppointment(id, fields, undefined, notifyClient);
+    if (typeof result === "string") failed.push({ _id: id, reason: result });
+    else if (!result) failed.push({ _id: id, reason: "APPOINTMENT_NOT_FOUND" });
+    else assigned.push(id);
+  }
+
+  return { assigned, failed };
 };
 
 const SGetAppointmentsByBusinessID = async ({ params }: Request) => {
@@ -413,9 +670,14 @@ const SCancelBooking = async (
 
   const business = await BusinessModel.findById(appointment.businessID);
 
+  // El negocio le cambió profesional o sucursal después de reservado: la
+  // cancelación del cliente es consecuencia de ese cambio, no un arrepentimiento.
+  // No corre la ventana ni la pérdida de la seña.
+  const causedByBusiness = cancelledBy === "client" && !!appointment.reassignedAt;
+
   // Ventana de cancelación: solo aplica al cliente. Se exceptúa un breve período
   // de gracia tras reservar para permitir "deshacer" (ej. turno del mismo día).
-  if (cancelledBy === "client") {
+  if (cancelledBy === "client" && !causedByBusiness) {
     const BOOKING_UNDO_GRACE_MIN = 15;
     const windowHours = business?.cancellationWindowHours ?? 24;
     const hoursUntilStart = dayjs(appointment.start).diff(dayjs(), "hour", true);
@@ -453,12 +715,15 @@ const SCancelBooking = async (
     refundStatus: "none",
     cancelledBy,
     cancelledAt: new Date(),
-    reason: reason ?? "",
+    reason:
+      reason ||
+      (causedByBusiness ? "El cliente rechazó el cambio de profesional o sucursal" : ""),
   });
 
-  // Reembolso: solo cuando cancela el negocio/empleado y había seña pagada
+  // Reembolso: cuando cancela el negocio/empleado, o cuando el cliente cancela
+  // por un cambio que hizo el negocio. Siempre que hubiera seña pagada.
   let refunded = false;
-  if (cancelledBy !== "client" && hadPaidDeposit) {
+  if ((cancelledBy !== "client" || causedByBusiness) && hadPaidDeposit) {
     await CancelledAppointmentModel.findByIdAndUpdate(cancellation._id, {
       refundStatus: "pending",
     });
@@ -490,6 +755,10 @@ const SCancelBooking = async (
       mpPaymentID: null,
       mpPreferenceID: null,
       cancelToken: null,
+      // Ambos son propiedad de la reserva que se acaba de cancelar: si quedaran,
+      // el próximo cliente heredaría el reembolso libre y una elección ajena.
+      reassignedAt: null,
+      employeeChosenByClient: false,
     },
     { new: true }
   );
@@ -524,7 +793,7 @@ const SCancelBookingByToken = async (token: string, reason?: string) => {
 const SGetAppointmentByCancelToken = async (token: string) => {
   if (!token) return null;
   const appointment = await AppointmentModel.findOne({ cancelToken: token }).select(
-    "start end service price name status depositStatus businessID"
+    "start end service price name status depositStatus businessID reassignedAt"
   );
   if (!appointment) return null;
   const business = await BusinessModel.findById(appointment.businessID).select(
@@ -540,6 +809,9 @@ const SGetAppointmentByCancelToken = async (token: string) => {
     businessPhone: business?.phone ?? null,
     cancellationWindowHours: business?.cancellationWindowHours ?? 24,
     depositAmount: service?.depositAmount ?? 0,
+    // El negocio le cambió profesional o sucursal: no rige la ventana ni la
+    // pérdida de la seña, y la pantalla tiene que decirlo antes de cancelar.
+    causedByBusiness: !!appointment.reassignedAt,
   };
 };
 
@@ -1067,6 +1339,9 @@ const SBusinessDepositRefundedSlotTaken = async (
 export {
   SCreateAppointment,
   SBookAppointment,
+  SAssignAppointment,
+  SAssignManyAppointments,
+  SFindAppointmentsFromTemplate,
   SGetAppointmentsByBusinessID,
   SGetAppointmentsByClientID,
   SGetAppointmentByID,

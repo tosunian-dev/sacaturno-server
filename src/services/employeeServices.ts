@@ -58,6 +58,37 @@ const SGetMyEmployeeRecord = async (employeeID: string) => {
   return { ...employee.toObject(), services, branches };
 };
 
+const uniqueIDs = (value: unknown): string[] =>
+  Array.isArray(value)
+    ? value.map(String).filter((id, index, all) => all.indexOf(id) === index)
+    : [];
+
+// Servicios y sucursales son obligatorios cuando el negocio tiene cargados: un
+// empleado sin servicio no puede tomar turnos y uno sin sucursal no aparece en
+// ningún flujo de reserva. Si el negocio no tiene ninguno cargado, la lista
+// tiene que quedar vacía (no hay nada válido que asignar).
+const SValidateEmployeeServices = async (
+  businessID: string,
+  services: string[],
+): Promise<string | null> => {
+  const businessServices = await ServiceModel.find({ businessID }).select("_id");
+  if (businessServices.length === 0) return services.length > 0 ? "INVALID_SERVICE" : null;
+  if (services.length === 0) return "SERVICE_REQUIRED";
+  const valid = new Set(businessServices.map((s) => String(s._id)));
+  return services.some((id) => !valid.has(id)) ? "INVALID_SERVICE" : null;
+};
+
+const SValidateEmployeeBranches = async (
+  businessID: string,
+  branches: string[],
+): Promise<string | null> => {
+  const businessBranches = await BranchModel.find({ businessID, deletedAt: null }).select("_id");
+  if (businessBranches.length === 0) return branches.length > 0 ? "INVALID_BRANCH" : null;
+  if (branches.length === 0) return "BRANCH_REQUIRED";
+  const valid = new Set(businessBranches.map((b) => String(b._id)));
+  return branches.some((id) => !valid.has(id)) ? "INVALID_BRANCH" : null;
+};
+
 const SSendInvitationEmail = async (
   toEmail: string,
   employeeName: string,
@@ -95,6 +126,24 @@ const SCreateEmployee = async ({ body }: Request) => {
   });
   if (existing) return "EMPLOYEE_ALREADY_EXISTS";
 
+  const services = uniqueIDs(body.services);
+  let branches = uniqueIDs(body.branches);
+
+  // Con una sola sucursal el alta no pregunta (el panel oculta el selector),
+  // así que la asignación se resuelve acá.
+  if (branches.length === 0) {
+    const activeBranches = await BranchModel.find({
+      businessID: body.businessID,
+      deletedAt: null,
+    }).select("_id");
+    if (activeBranches.length === 1) branches = [String(activeBranches[0]._id)];
+  }
+
+  const serviceError = await SValidateEmployeeServices(body.businessID, services);
+  if (serviceError) return serviceError;
+  const branchError = await SValidateEmployeeBranches(body.businessID, branches);
+  if (branchError) return branchError;
+
   const invitationToken = crypto.randomBytes(32).toString("hex");
   const invitationExpiry = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
@@ -107,6 +156,8 @@ const SCreateEmployee = async ({ body }: Request) => {
     email: body.email,
     status: "pending",
     permissions: body.permissions ?? [],
+    services,
+    branches,
     invitationToken,
     invitationExpiry,
     userID: existingUser ? String(existingUser._id) : null,
@@ -195,14 +246,32 @@ const SResendInvitation = async (employeeID: string, ownerID: string) => {
 
 const SUpdateEmployee = async ({ body, params }: Request) => {
   const { ownerID, ...fields } = body;
+
+  const employee = await EmployeeModel.findOne({ _id: params.employeeID, ownerID }).select("businessID");
+  if (!employee) return "EMPLOYEE_NOT_FOUND";
+
   const allowedFields: Record<string, unknown> = {};
   if (fields.name !== undefined) allowedFields.name = fields.name;
   if (fields.surname !== undefined) allowedFields.surname = fields.surname;
   if (fields.email !== undefined) allowedFields.email = fields.email;
   if (fields.status !== undefined) allowedFields.status = fields.status;
   if (fields.permissions !== undefined) allowedFields.permissions = fields.permissions;
-  if (fields.branches !== undefined) allowedFields.branches = fields.branches;
-  if (fields.services !== undefined) allowedFields.services = fields.services;
+
+  // Cada lista se valida solo si viene en el body: un cambio de permisos o de
+  // estado no tiene por qué arrastrar validación de la otra.
+  if (fields.services !== undefined) {
+    const services = uniqueIDs(fields.services);
+    const error = await SValidateEmployeeServices(employee.businessID, services);
+    if (error) return error;
+    allowedFields.services = services;
+  }
+  if (fields.branches !== undefined) {
+    const branches = uniqueIDs(fields.branches);
+    const error = await SValidateEmployeeBranches(employee.businessID, branches);
+    if (error) return error;
+    allowedFields.branches = branches;
+  }
+
   const updated = await EmployeeModel.findOneAndUpdate(
     { _id: params.employeeID, ownerID },
     { $set: allowedFields },
@@ -218,19 +287,36 @@ const SDeleteEmployee = async ({ params, body }: Request) => {
     ownerID: body.ownerID,
   });
   if (!deleted) return "EMPLOYEE_NOT_FOUND";
+
+  // Sin esto el turno queda apuntando a un empleado inexistente: no aparece en
+  // ningún filtro y tampoco lo agarra el filtro "sin asignar", porque no es null.
+  // Los turnos pasados conservan el ID como registro histórico.
+  await AppointmentModel.updateMany(
+    { employeeID: params.employeeID, start: { $gte: new Date() } },
+    { $set: { employeeID: null } }
+  );
+  await AppointmentScheduleModel.updateMany(
+    { employeeID: params.employeeID },
+    { $set: { employeeID: null } }
+  );
+
   return deleted;
 };
 
 const SCheckEmployeeAppointmentConflict = async (
   employeeID: string,
   start: Date,
-  end: Date
+  end: Date,
+  excludeAppointmentID?: string
 ): Promise<boolean> => {
-  const conflict = await AppointmentModel.findOne({
+  const query: Record<string, unknown> = {
     employeeID,
     start: { $lt: new Date(end) },
     end: { $gt: new Date(start) },
-  });
+  };
+  // Al reasignar un turno existente, él mismo no puede contar como conflicto propio.
+  if (excludeAppointmentID) query._id = { $ne: excludeAppointmentID };
+  const conflict = await AppointmentModel.findOne(query);
   return !!conflict;
 };
 
@@ -238,9 +324,13 @@ const SCheckEmployeeScheduleConflict = async (
   employeeID: string,
   dayNumber: number,
   newStart: Date,
-  newEnd: Date
+  newEnd: Date,
+  excludeScheduleID?: string
 ): Promise<boolean> => {
-  const existing = await AppointmentScheduleModel.find({ employeeID, dayNumber });
+  const query: Record<string, unknown> = { employeeID, dayNumber };
+  // Al editar una plantilla, ella misma no puede contar como conflicto propio.
+  if (excludeScheduleID) query._id = { $ne: excludeScheduleID };
+  const existing = await AppointmentScheduleModel.find(query);
   const newStartMins = dayjs(newStart).hour() * 60 + dayjs(newStart).minute();
   const newEndMins = dayjs(newEnd).hour() * 60 + dayjs(newEnd).minute();
 

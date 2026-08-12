@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   createAppointment,
   bookAppointment,
+  assignAppointment,
+  assignManyAppointments,
   getAppointmentByID,
   getAppointmentsByBusinessID,
   getAppointmentsByClientID,
@@ -35,6 +37,10 @@ router.get(
 router.get("/appointment/getbyid/:ID", checkAuth, getAppointmentByID);
 /** BOOK APPOINTMENT */
 router.put("/appointment/book", bookAppointment);
+/** ASSIGN EMPLOYEE / BRANCH TO AN EXISTING APPOINTMENT */
+router.put("/appointment/assign/:appointmentID", checkAuth, assignAppointment);
+/** BULK ASSIGN OVER EXISTING APPOINTMENTS */
+router.put("/appointment/assignmany", checkAuth, assignManyAppointments);
 /** CANCEL BOOKING — negocio/empleado (autenticado, reembolsa seña) */
 router.put("/appointment/book/cancel", checkAuth, cancelBooking);
 /** CANCEL BOOKING — cliente vía link con token (público, sin reembolso) */

@@ -93,10 +93,19 @@ export const handleScheduleAutomation = async () => {
             phone: 0,
             name: "",
             status: "unbooked",
+            employeeID: appointment.employeeID ?? null,
+            branchID: appointment.branchID ?? null,
           };
-          // ALMACENAR TURNO EN APPOINTMENTS (upsert evita duplicados si la funcion se ejecuta mas de una vez)
+          // ALMACENAR TURNO EN APPOINTMENTS (upsert evita duplicados si la funcion se ejecuta mas de una vez).
+          // La clave incluye servicio y empleado: sin eso, dos turnos paralelos en
+          // el mismo horario (distinto profesional) se colapsaban en uno solo.
           await AppointmentModel.updateOne(
-            { businessID: appointmentObj.businessID, start: appointmentObj.start },
+            {
+              businessID: appointmentObj.businessID,
+              start: appointmentObj.start,
+              service: appointmentObj.service,
+              employeeID: appointmentObj.employeeID ?? null,
+            },
             { $setOnInsert: appointmentObj },
             { upsert: true }
           );

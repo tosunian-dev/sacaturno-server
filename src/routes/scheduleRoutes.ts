@@ -3,6 +3,8 @@ import { checkAuth } from "../middlewares/authMiddleware";
 import {
   getDaysAndAppointmentsByBusinessID,
   createScheduleAppointment,
+  editScheduleAppointment,
+  assignManyScheduleAppointments,
   deleteScheduleAppointment,
   editDay,
   editManyAppointments
@@ -26,6 +28,18 @@ router.post(
   "/schedule/appointment/create",
   checkAuth,
   createScheduleAppointment
+);
+// EDIT SCHEDULED APPOINTMENT BY APPOINTMENT ID
+router.put(
+  "/schedule/appointment/edit/:appointmentID",
+  checkAuth,
+  editScheduleAppointment
+);
+// BULK ASSIGN EMPLOYEE / BRANCH TO SCHEDULED APPOINTMENTS
+router.put(
+  "/schedule/appointment/assignmany",
+  checkAuth,
+  assignManyScheduleAppointments
 );
 // DELETE SCHEDULED APPOINTMENT BY APPOINTMENT ID
 router.delete(

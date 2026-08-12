@@ -3,6 +3,8 @@ import { handleError } from "../utils/error.handle";
 import BusinessModel from "../models/businessModel";
 import {
   SBookAppointment,
+  SAssignAppointment,
+  SAssignManyAppointments,
   SCreateAppointment,
   SGetAppointmentByID,
   SGetAppointmentsByBusinessID,
@@ -82,6 +84,82 @@ const getAppointmentsByClientID = async (req: Request, res: Response) => {
     res.send(appointmentBooked);
   } catch (error) {
     handleError(res, "ERROR_GET_APPOINTMENT");
+  }
+};
+
+// Asignar profesional/sucursal a un turno existente.
+// El dueño asigna a quien quiera; un empleado sólo puede tomar un turno libre
+// para sí mismo o soltar el que ya tiene — salvo que administre toda la agenda.
+const assignAppointment = async (req: RequestExtended, res: Response) => {
+  try {
+    const user = req.user as JwtContextPayload;
+    const { employeeID, branchID, notifyClient } = req.body as {
+      employeeID?: string | null;
+      branchID?: string | null;
+      notifyClient?: boolean;
+    };
+
+    let restrictToEmployeeID: string | undefined;
+    if (user?.role === "employee") {
+      const canManageAll = await hasPermission(user.employeeID!, "manage_all_appointments");
+      if (!canManageAll) {
+        const canManageOwn = await hasPermission(user.employeeID!, "manage_own_appointments");
+        if (!canManageOwn) return res.status(403).send("PERMISSION_DENIED");
+        restrictToEmployeeID = user.employeeID!;
+      }
+    }
+
+    const result = await SAssignAppointment(
+      req.params.appointmentID,
+      { employeeID, branchID },
+      restrictToEmployeeID,
+      !!notifyClient
+    );
+    if (result === "PERMISSION_DENIED") return res.status(403).send("PERMISSION_DENIED");
+    if (result === "ALREADY_ASSIGNED") return res.status(409).send("ALREADY_ASSIGNED");
+    if (result === "APPOINTMENT_NOT_FOUND") return res.status(404).send("APPOINTMENT_NOT_FOUND");
+    if (result === "EMPLOYEE_NOT_FOUND") return res.status(404).send("EMPLOYEE_NOT_FOUND");
+    if (result === "EMPLOYEE_NOT_ACTIVE") return res.status(400).send("EMPLOYEE_NOT_ACTIVE");
+    if (result === "EMPLOYEE_CONFLICT") return res.status(409).send("EMPLOYEE_CONFLICT");
+    if (result === "EMPLOYEE_NOT_IN_BRANCH") return res.status(400).send("EMPLOYEE_NOT_IN_BRANCH");
+    res.send(result);
+  } catch (error) {
+    handleError(res, "ERROR_ASSIGN_APPOINTMENT");
+  }
+};
+
+// Asignación en lote sobre turnos ya creados. La usa el paso de propagación a
+// turnos reservados: sólo el dueño (o quien administre toda la agenda) puede
+// tocar turnos ajenos, así que acá no aplica el modo "tomarme el turno".
+const assignManyAppointments = async (req: RequestExtended, res: Response) => {
+  try {
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed = await hasPermission(user.employeeID!, "manage_all_appointments");
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
+
+    const { appointmentIDs, employeeID, branchID, notifyClient } = req.body as {
+      appointmentIDs?: string[];
+      employeeID?: string | null;
+      branchID?: string | null;
+      notifyClient?: boolean;
+    };
+    if (!Array.isArray(appointmentIDs) || appointmentIDs.length === 0) {
+      return res.status(400).send("NO_APPOINTMENTS");
+    }
+
+    const result = await SAssignManyAppointments(
+      appointmentIDs,
+      {
+        ...(employeeID !== undefined ? { employeeID } : {}),
+        ...(branchID !== undefined ? { branchID } : {}),
+      },
+      !!notifyClient
+    );
+    res.send(result);
+  } catch (error) {
+    handleError(res, "ERROR_ASSIGN_MANY_APPOINTMENTS");
   }
 };
 
@@ -246,6 +324,8 @@ const getCancelledAppointments = async (req: RequestExtended, res: Response) => 
 export {
   createAppointment,
   bookAppointment,
+  assignAppointment,
+  assignManyAppointments,
   getAppointmentByID,
   getAppointmentsByBusinessID,
   getAppointmentsByClientID,

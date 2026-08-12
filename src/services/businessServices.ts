@@ -4,6 +4,8 @@ import BusinessModel from "../models/businessModel";
 import { Request } from "express";
 import fs from "fs";
 import ServiceModel from "../models/serviceModel";
+import EmployeeModel from "../models/employeeModel";
+import { isValidObjectId } from "mongoose";
 import dayjs from "dayjs";
 import ISubscription from "../interfaces/subscription.interface";
 import SubscriptionModel from "../models/subscriptionModel";
@@ -164,17 +166,38 @@ const SGetServicesByOwnerID = async ({ params }: Request) => {
 
 const MAX_SERVICES_PER_BUSINESS = 200;
 
-const SCreateService = async (serviceData: IService) => {
-  const serviceCount = await ServiceModel.countDocuments({ businessID: serviceData.businessID });
+const SCreateService = async (serviceData: IService & { employeeIDs?: string[] }) => {
+  const { employeeIDs, ...service } = serviceData;
+  const serviceCount = await ServiceModel.countDocuments({ businessID: service.businessID });
   if (serviceCount >= MAX_SERVICES_PER_BUSINESS) {
     return "SERVICE_LIMIT_REACHED";
   }
-  const createdBusiness = await ServiceModel.create(serviceData);
-  return createdBusiness;
+  const createdService = await ServiceModel.create(service);
+
+  // La relación empleado↔servicio vive del lado del empleado, así que la
+  // asignación elegida al crear el servicio se escribe ahí. El filtro por
+  // businessID evita asignar empleados de otro negocio.
+  const assignTo = (Array.isArray(employeeIDs) ? employeeIDs : [])
+    .map(String)
+    .filter((id) => isValidObjectId(id));
+  if (assignTo.length > 0) {
+    await EmployeeModel.updateMany(
+      { _id: { $in: assignTo }, businessID: service.businessID },
+      { $addToSet: { services: String(createdService._id) } }
+    );
+  }
+
+  return createdService;
 };
 
 const SDeleteService = async ({ params }: Request) => {
-  const serviceData = await ServiceModel.findByIdAndDelete(params.serviceID);
+  await ServiceModel.findByIdAndDelete(params.serviceID);
+  // Sin esto el empleado queda con un servicio inexistente en la lista, que
+  // cuenta como asignación válida pero no matchea ningún turno.
+  await EmployeeModel.updateMany(
+    { services: params.serviceID },
+    { $pull: { services: params.serviceID } }
+  );
 };
 
 const SEditServiceData = async (serviceData: {

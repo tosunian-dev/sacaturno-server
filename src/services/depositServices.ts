@@ -27,7 +27,7 @@ const holdExpiry = (minutes: number) => new Date(Date.now() + minutes * 60_000);
 // Crea la preferencia de pago para la seña y devuelve el init_point para redirigir al cliente a MP
 const SCreateDepositPreference = async (req: Request) => {
     // datos de la reserva y del cliente
-    const { appointmentID, clientName, clientEmail, clientPhone } = req.body;
+    const { appointmentID, clientName, clientEmail, clientPhone, employeeChosenByClient } = req.body;
     if (!mongoose.isValidObjectId(appointmentID)) return "APPOINTMENT_NOT_FOUND";
 
     // 1. Obtener el turno
@@ -70,6 +70,7 @@ const SCreateDepositPreference = async (req: Request) => {
             name: clientName,
             email: clientEmail,
             phone: clientPhone,
+            employeeChosenByClient: !!employeeChosenByClient,
         },
         { new: true }
     );

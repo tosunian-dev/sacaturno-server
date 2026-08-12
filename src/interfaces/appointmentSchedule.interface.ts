@@ -12,7 +12,7 @@ export interface IAppointmentSchedule {
   dayScheduleID: IDaySchedule | string;
   _id?: string;
   title?: string;
-  dayNumber?: number;
+  dayNumber: number;
   employeeID?: string | null;
   branchID?: string | null;
 }

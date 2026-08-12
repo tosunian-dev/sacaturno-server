@@ -20,6 +20,10 @@ export interface IAppointment {
   depositHoldUntil?: Date | null;
   employeeID?: string | null;
   branchID?: string | null;
+  // true sólo si el cliente eligió explícitamente al profesional al reservar
+  employeeChosenByClient?: boolean;
+  // Fecha en que el negocio cambió profesional/sucursal de un turno ya reservado
+  reassignedAt?: Date | null;
   sentReminders?: string[];
   cancelToken?: string | null;
 }

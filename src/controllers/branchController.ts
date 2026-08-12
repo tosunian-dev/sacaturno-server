@@ -27,6 +27,8 @@ const createBranch = async (req: RequestExtended, res: Response) => {
     if (result === "PLAN_REQUIRED") return res.status(402).send("PLAN_REQUIRED");
     if (result === "BRANCH_LIMIT_REACHED") return res.status(400).send("BRANCH_LIMIT_REACHED");
     if (result === "BRANCH_NAME_TAKEN") return res.status(409).send("BRANCH_NAME_TAKEN");
+    // Respuesta enriquecida: además de la sucursal, el resumen de lo que se
+    // reasignó automáticamente, que el front usa para el modal informativo.
     res.status(201).send(result);
   } catch (error) {
     handleError(res, "ERROR_CREATE_BRANCH");

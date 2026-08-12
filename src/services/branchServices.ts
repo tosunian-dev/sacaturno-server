@@ -32,7 +32,58 @@ const SCreateBranch = async ({ body }: Request) => {
     phone: body.phone,
     email: body.email ?? null,
   });
-  return branch;
+
+  // Primera sucursal: el negocio opera desde un solo lugar, así que todo lo que
+  // está sin asignar pasa a ser de esta sucursal. Sin esto, los turnos creados
+  // antes de tener sucursales quedarían huérfanos para siempre.
+  const isFirstBranch = activeCount === 0;
+  let assignedSchedules = 0;
+  let assignedAppointments = 0;
+  let assignedEmployees = 0;
+
+  if (isFirstBranch) {
+    // Un empleado dado de alta antes de que existiera cualquier sucursal quedó
+    // con `branches: []` y por eso no califica para ningún turno. Con una sola
+    // sucursal la inferencia es exacta: atiende ahí.
+    const employeesResult = await EmployeeModel.updateMany(
+      {
+        businessID: body.businessID,
+        $or: [{ branches: { $size: 0 } }, { branches: { $exists: false } }],
+      },
+      { $set: { branches: [String(branch._id)] } }
+    );
+    assignedEmployees = employeesResult.modifiedCount ?? 0;
+
+    const schedulesResult = await AppointmentScheduleModel.updateMany(
+      { businessID: body.businessID, $or: [{ branchID: null }, { branchID: { $exists: false } }] },
+      { $set: { branchID: String(branch._id) } }
+    );
+    const appointmentsResult = await AppointmentModel.updateMany(
+      {
+        businessID: body.businessID,
+        start: { $gte: new Date() },
+        $or: [{ branchID: null }, { branchID: { $exists: false } }],
+      },
+      { $set: { branchID: String(branch._id) } }
+    );
+    assignedSchedules = schedulesResult.modifiedCount ?? 0;
+    assignedAppointments = appointmentsResult.modifiedCount ?? 0;
+  }
+
+  // A partir de la segunda sucursal ya no se puede inferir nada: el total sirve
+  // para dimensionarle al usuario cuánto hay disponible para redistribuir.
+  const totalSchedules = isFirstBranch
+    ? assignedSchedules
+    : await AppointmentScheduleModel.countDocuments({ businessID: body.businessID });
+
+  return {
+    branch,
+    isFirstBranch,
+    assignedSchedules,
+    assignedAppointments,
+    assignedEmployees,
+    totalSchedules,
+  };
 };
 
 const SEditBranch = async ({ body, params }: Request) => {

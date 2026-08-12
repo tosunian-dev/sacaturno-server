@@ -3,6 +3,8 @@ import { SGetDaysAndAppointmentsByBusinessID } from "../services/appointmentServ
 import { handleError } from "../utils/error.handle";
 import {
   SCreateScheduleAppointment,
+  SEditScheduleAppointment,
+  SAssignManyScheduleAppointments,
   SDeleteScheduleAppointment,
   SEditDay,
   SEditManyAppointments,
@@ -47,6 +49,36 @@ const createScheduleAppointment = async (req: Request, res: Response) => {
   }
 };
 
+const editScheduleAppointment = async (req: Request, res: Response) => {
+  try {
+    const appointmentEdited = await SEditScheduleAppointment(req);
+    if (appointmentEdited === "SCHEDULE_NOT_FOUND") {
+      return res.status(404).send("SCHEDULE_NOT_FOUND");
+    }
+    if (appointmentEdited === "EMPLOYEE_CONFLICT") {
+      return res.status(409).send("EMPLOYEE_CONFLICT");
+    }
+    if (appointmentEdited === "EMPLOYEE_NOT_IN_BRANCH") {
+      return res.status(400).send("EMPLOYEE_NOT_IN_BRANCH");
+    }
+    res.send(appointmentEdited);
+  } catch (error) {
+    handleError(res, "ERROR_EDIT_APPOINTMENT_SCHEDULE");
+  }
+};
+
+const assignManyScheduleAppointments = async (req: Request, res: Response) => {
+  try {
+    const result = await SAssignManyScheduleAppointments(req);
+    if (result === "NO_APPOINTMENTS") return res.status(400).send("NO_APPOINTMENTS");
+    if (result === "EMPLOYEE_NOT_FOUND") return res.status(404).send("EMPLOYEE_NOT_FOUND");
+    if (result === "EMPLOYEE_NOT_ACTIVE") return res.status(400).send("EMPLOYEE_NOT_ACTIVE");
+    res.send(result);
+  } catch (error) {
+    handleError(res, "ERROR_ASSIGN_MANY_APPOINTMENT_SCHEDULE");
+  }
+};
+
 const deleteScheduleAppointment = async (req: Request, res: Response) => {
   try {
     const appointmentDeleted = await SDeleteScheduleAppointment(req);
@@ -69,6 +101,8 @@ export {
   getDaysAndAppointmentsByBusinessID,
   editDay,
   createScheduleAppointment,
+  editScheduleAppointment,
+  assignManyScheduleAppointments,
   deleteScheduleAppointment,
   editManyAppointments,
 };
