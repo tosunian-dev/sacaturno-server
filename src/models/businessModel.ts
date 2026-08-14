@@ -35,6 +35,7 @@ const BusinessSchema = new Schema<IBusiness>(
     slug: {
       type: String,
       required: true,
+      trim: true,
     },
     image: {
       type: String,

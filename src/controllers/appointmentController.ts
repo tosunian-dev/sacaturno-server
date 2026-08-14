@@ -204,7 +204,9 @@ const cancelBooking = async (req: RequestExtended, res: Response) => {
   }
 };
 
-// Cancelación por el cliente vía link con token (público). No reembolsa la seña.
+// Cancelación por el cliente vía link con token (público). Sólo reembolsa la seña
+// si el negocio le había reasignado el turno o si está dentro de la gracia para
+// deshacer; la respuesta trae `refundsDeposit` con lo que efectivamente pasó.
 const cancelBookingByToken = async (req: Request, res: Response) => {
   try {
     const result = await SCancelBookingByToken(req.body.token, req.body.reason);

@@ -21,6 +21,10 @@ import { SGetPlanPrices } from "./services/planPricingServices";
 
 // SERVER INICIALIZATION
 const app = express();
+// Railway agrega un proxy adelante: sin esto req.ip es la IP del proxy (igual
+// para todos) y los rate limiters por IP limitarían a toda la plataforma junta.
+// El valor 1 = un solo salto confiable; `true` permitiría falsear X-Forwarded-For.
+app.set("trust proxy", 1);
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

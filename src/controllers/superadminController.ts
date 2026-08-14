@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import PlatformAdminModel from "../models/platformAdminModel";
-import { verify } from "../utils/pwEncrypt.handle";
+import { verify, encrypt, needsRehash } from "../utils/pwEncrypt.handle";
 import { platformAdminJwtGen } from "../utils/jwtGen.handle";
 import { handleError } from "../utils/error.handle";
 import {
@@ -14,6 +14,7 @@ import {
   SGetBusinesses,
   SGetUsers,
   SGetUserDetail,
+  SUpdateBusinessSubscription,
 } from "../services/superadminServices";
 
 const loginPlatformAdmin = async (req: Request, res: Response) => {
@@ -26,6 +27,16 @@ const loginPlatformAdmin = async (req: Request, res: Response) => {
 
     const passwordMatches = await verify(password, admin.password);
     if (!passwordMatches) return res.status(401).send("INVALID_CREDENTIALS");
+
+    // Rehash progresivo al cost factor actual (ver pwEncrypt.handle.ts).
+    if (needsRehash(admin.password)) {
+      try {
+        admin.password = await encrypt(password);
+        await admin.save();
+      } catch (error) {
+        console.error("Password rehash failed for platform admin", error);
+      }
+    }
 
     const token = platformAdminJwtGen({ adminId: String(admin._id), email: admin.email });
     res.send({ token, name: admin.name, email: admin.email });
@@ -87,6 +98,18 @@ const getBusinesses = async (req: Request, res: Response) => {
   }
 };
 
+const updateBusinessSubscription = async (req: Request, res: Response) => {
+  try {
+    const result = await SUpdateBusinessSubscription(req);
+    if (result === "INVALID_PLAN") return res.status(400).send("INVALID_PLAN");
+    if (result === "INVALID_DATE") return res.status(400).send("INVALID_DATE");
+    if (result === "BUSINESS_NOT_FOUND") return res.status(404).send("BUSINESS_NOT_FOUND");
+    res.send(result);
+  } catch (error) {
+    handleError(res, "ERROR_SUPERADMIN_UPDATE_SUBSCRIPTION");
+  }
+};
+
 const getUsers = async (req: Request, res: Response) => {
   try {
     res.send(await SGetUsers(req));
@@ -113,6 +136,7 @@ export {
   getFunnel,
   getExpiringSubscriptions,
   getBusinesses,
+  updateBusinessSubscription,
   getUsers,
   getUserDetail,
 };

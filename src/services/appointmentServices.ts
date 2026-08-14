@@ -237,17 +237,21 @@ const SClientEmailBookedAppointment = async (
     });
   }
 
-  // 0 = "Sin restricción": el cliente puede autocancelar siempre, así que no hay
-  // plazo concreto que informar.
+  // La ventana la configura el negocio; la regla de la seña es fija de SacaTurno
+  // (ver SCancelBooking) y sólo se pierde cuando cancela el cliente por su cuenta.
+  // 0 = "Sin restricción": no hay plazo concreto que informar.
   const windowHours = businessData.cancellationWindowHours ?? 24;
+  const windowNote = cancelUrl
+    ? windowHours > 0
+      ? `Podés cancelar online hasta <b>${windowHours} horas antes</b> del turno; pasado ese plazo tenés que contactar al negocio. `
+      : "Podés cancelar online en cualquier momento, hasta la hora del turno. "
+    : "";
   const depositNote =
-    cancelUrl && depositAmount && depositAmount > 0
-      ? windowHours > 0
-        ? `Al cancelar, la política de cancelación del negocio no permite el reembolso de la seña. Podés cancelar online hasta <b>${windowHours} horas antes</b> del turno. `
-        : "Al cancelar, la política de cancelación del negocio no permite el reembolso de la seña. "
+    depositAmount && depositAmount > 0
+      ? `Podés deshacer esta reserva dentro de los primeros ${BOOKING_UNDO_GRACE_MIN} minutos y se te devuelve la seña. Pasado ese rato, si cancelás vos la seña no se reembolsa; si el turno lo cancela el negocio, se te devuelve por Mercado Pago. `
       : "";
 
-  const afterCtaText = `${depositNote}¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${telLink(
+  const afterCtaText = `${windowNote}${depositNote}¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${telLink(
     businessData.phone
   )}</b>.`;
 
@@ -648,11 +652,28 @@ const SDeleteAppointment = async ({ params }: Request) => {
   return appointment;
 };
 
+// Minutos tras reservar en los que el cliente puede "deshacer" la reserva: cancela
+// aunque el plazo del negocio ya haya pasado y se le devuelve la seña. Es un error
+// de reserva recién cometido, no un arrepentimiento tardío.
+const BOOKING_UNDO_GRACE_MIN = 15;
+
+// Por qué se devuelve la seña, o null si no se devuelve. Es la única fuente de la
+// decisión: la usan el reembolso por MP y los textos de los dos correos.
+type RefundCause = "cancelled_by_business" | "reassigned" | "undo_grace" | null;
+
+const REFUND_REASON_TEXT: Record<NonNullable<RefundCause>, string> = {
+  cancelled_by_business: "",
+  reassigned: "El cliente rechazó el cambio de profesional o sucursal",
+  undo_grace: `El cliente canceló dentro de los ${BOOKING_UNDO_GRACE_MIN} minutos de haber reservado`,
+};
+
 // Cancela un turno reservado. El slot se vacía y vuelve a "unbooked" (limpio,
 // sin heredar datos de seña) para reutilizarse; la traza queda en
 // CancelledAppointmentModel. Regla de negocio de la seña:
-//   - cliente cancela  → NO se reembolsa (es la penalidad)
-//   - negocio/empleado → SÍ se reembolsa siempre vía MP
+//   - negocio/empleado cancela           → SÍ se reembolsa siempre vía MP
+//   - cliente cancela tras una reasignación → SÍ (el cambio no lo hizo él)
+//   - cliente cancela dentro de la gracia   → SÍ (deshacer una reserva recién hecha)
+//   - cliente cancela en cualquier otro caso → NO (es la penalidad)
 const SCancelBooking = async (
   appointmentID: string,
   cancelledBy: "client" | "owner" | "employee",
@@ -675,18 +696,30 @@ const SCancelBooking = async (
   // No corre la ventana ni la pérdida de la seña.
   const causedByBusiness = cancelledBy === "client" && !!appointment.reassignedAt;
 
-  // Ventana de cancelación: solo aplica al cliente. Se exceptúa un breve período
-  // de gracia tras reservar para permitir "deshacer" (ej. turno del mismo día).
-  if (cancelledBy === "client" && !causedByBusiness) {
-    const BOOKING_UNDO_GRACE_MIN = 15;
+  // Deshacer una reserva recién hecha. Se mide contra updatedAt porque reservar es
+  // la última escritura sobre el slot.
+  const bookedMinsAgo = dayjs().diff(dayjs((appointment as any).updatedAt), "minute");
+  const withinGrace =
+    cancelledBy === "client" && bookedMinsAgo <= BOOKING_UNDO_GRACE_MIN;
+
+  // Ventana de cancelación: solo aplica al cliente, y ni la reasignación ni la
+  // gracia caen bajo ella.
+  if (cancelledBy === "client" && !causedByBusiness && !withinGrace) {
     const windowHours = business?.cancellationWindowHours ?? 24;
     const hoursUntilStart = dayjs(appointment.start).diff(dayjs(), "hour", true);
-    const bookedMinsAgo = dayjs().diff(dayjs((appointment as any).updatedAt), "minute");
-    const withinGrace = bookedMinsAgo <= BOOKING_UNDO_GRACE_MIN;
-    if (!withinGrace && hoursUntilStart < windowHours) {
+    if (hoursUntilStart < windowHours) {
       return "CANCELLATION_WINDOW_CLOSED";
     }
   }
+
+  const refundCause: RefundCause =
+    cancelledBy !== "client"
+      ? "cancelled_by_business"
+      : causedByBusiness
+        ? "reassigned"
+        : withinGrace
+          ? "undo_grace"
+          : null;
 
   const service = await ServiceModel.findOne({
     businessID: appointment.businessID,
@@ -715,15 +748,12 @@ const SCancelBooking = async (
     refundStatus: "none",
     cancelledBy,
     cancelledAt: new Date(),
-    reason:
-      reason ||
-      (causedByBusiness ? "El cliente rechazó el cambio de profesional o sucursal" : ""),
+    reason: reason || (refundCause ? REFUND_REASON_TEXT[refundCause] : ""),
   });
 
-  // Reembolso: cuando cancela el negocio/empleado, o cuando el cliente cancela
-  // por un cambio que hizo el negocio. Siempre que hubiera seña pagada.
+  // Reembolso: sólo si la causa lo habilita y hubo seña efectivamente acreditada.
   let refunded = false;
-  if ((cancelledBy !== "client" || causedByBusiness) && hadPaidDeposit) {
+  if (refundCause && hadPaidDeposit) {
     await CancelledAppointmentModel.findByIdAndUpdate(cancellation._id, {
       refundStatus: "pending",
     });
@@ -763,9 +793,25 @@ const SCancelBooking = async (
     { new: true }
   );
 
-  // Emails: al negocio siempre; al cliente para confirmarle
+  // Emails: al negocio siempre, al profesional asignado si lo hay, y al cliente
+  // para confirmarle. Los tres se mandan sin importar quién canceló.
   if (business) {
-    SBusinessCancelledBooking(appointment, business, cancelledBy, hadPaidDeposit, refunded);
+    SBusinessCancelledBooking(
+      appointment,
+      business,
+      cancelledBy,
+      hadPaidDeposit,
+      refundCause,
+      refunded
+    );
+    SEmployeeCancelledBooking(
+      appointment,
+      business,
+      cancelledBy,
+      hadPaidDeposit,
+      refundCause,
+      refunded
+    );
     if (appointment.email) {
       SClientCancelledBooking(
         appointment,
@@ -773,12 +819,20 @@ const SCancelBooking = async (
         cancelledBy,
         hadPaidDeposit,
         depositAmount,
+        refundCause,
         refunded
       );
     }
   }
 
-  return { freed, cancellationID: cancellation._id, refunded };
+  return {
+    freed,
+    cancellationID: cancellation._id,
+    refunded,
+    hadDeposit: hadPaidDeposit,
+    refundsDeposit: !!refundCause,
+    refundCause,
+  };
 };
 
 // Cancelación por parte del cliente vía link con token (sin login)
@@ -793,7 +847,7 @@ const SCancelBookingByToken = async (token: string, reason?: string) => {
 const SGetAppointmentByCancelToken = async (token: string) => {
   if (!token) return null;
   const appointment = await AppointmentModel.findOne({ cancelToken: token }).select(
-    "start end service price name status depositStatus businessID reassignedAt"
+    "start end service price name status depositStatus businessID reassignedAt updatedAt"
   );
   if (!appointment) return null;
   const business = await BusinessModel.findById(appointment.businessID).select(
@@ -812,6 +866,12 @@ const SGetAppointmentByCancelToken = async (token: string) => {
     // El negocio le cambió profesional o sucursal: no rige la ventana ni la
     // pérdida de la seña, y la pantalla tiene que decirlo antes de cancelar.
     causedByBusiness: !!appointment.reassignedAt,
+    // Instante en que vence la gracia para deshacer, no un booleano: la pantalla
+    // puede quedar abierta y tiene que dejar de prometer el reembolso al vencer.
+    undoGraceEndsAt: dayjs((appointment as any).updatedAt)
+      .add(BOOKING_UNDO_GRACE_MIN, "minute")
+      .toDate(),
+    undoGraceMinutes: BOOKING_UNDO_GRACE_MIN,
   };
 };
 
@@ -826,49 +886,77 @@ const cancellationPreview = async (appointmentData: IAppointment): Promise<strin
   ].join(" | ");
 };
 
-const SBusinessCancelledBooking = async (
+// Negocio y empleado reciben el mismo aviso de cancelación; se arma una sola vez
+// y cada función cambia el destinatario. Lo único que difiere es la seña: la
+// cuenta de Mercado Pago es del negocio, así que al empleado no se le pide una
+// acción que no puede hacer.
+const buildCancellationNotification = async (
   appointmentData: IAppointment,
   businessData: IBusiness,
-  cancelledBy: "client" | "owner" | "employee" = "client",
-  hadDeposit: boolean = false,
-  refunded: boolean = false
+  cancelledBy: "client" | "owner" | "employee",
+  hadDeposit: boolean,
+  refundCause: RefundCause,
+  refunded: boolean,
+  audience: "business" | "employee"
 ) => {
   const appointmentDate = capitalize(
     dayjs(appointmentData.start)
       .tz(APPT_TZ)
       .format("dddd D [de] MMMM [|] HH:mm [hs]")
   );
-  const resend = new Resend(process.env.RESEND_KEY);
 
+  const forBusiness = audience === "business";
   const cancelledByLabel =
     cancelledBy === "client" ? "El cliente canceló" : "Se canceló";
 
   const callouts: EmailCallout[] = [];
   if (hadDeposit) {
-    if (cancelledBy === "client") {
+    if (!refundCause) {
       callouts.push({
         tone: "warning",
         title: "La seña no se reembolsa: la cancelación la hizo el cliente.",
       });
-    } else if (refunded) {
-      callouts.push({
-        tone: "success",
-        title: "Se reembolsó la seña al cliente vía Mercado Pago.",
-      });
     } else {
-      callouts.push({
-        tone: "danger",
-        title:
-          "No se pudo reembolsar la seña automáticamente. Revisá tu cuenta de Mercado Pago y reintentá el reembolso manualmente.",
-      });
+      // Si canceló el cliente y aun así se devuelve, el motivo no es evidente:
+      // hay que decirlo.
+      const why =
+        refundCause === "reassigned"
+          ? "El cliente canceló por un cambio de profesional o sucursal, así que la seña se le devuelve."
+          : refundCause === "undo_grace"
+            ? `El cliente canceló dentro de los ${BOOKING_UNDO_GRACE_MIN} minutos de haber reservado, así que la seña se le devuelve.`
+            : undefined;
+      if (refunded) {
+        callouts.push({
+          tone: "success",
+          title: "Se reembolsó la seña al cliente vía Mercado Pago.",
+          text: why,
+        });
+      } else if (forBusiness) {
+        callouts.push({
+          tone: "danger",
+          title:
+            "No se pudo reembolsar la seña automáticamente. Revisá tu cuenta de Mercado Pago y reintentá el reembolso manualmente.",
+          text: why,
+        });
+      } else {
+        callouts.push({
+          tone: "warning",
+          title: "El reembolso de la seña quedó pendiente de resolución por el negocio.",
+          text: why,
+        });
+      }
     }
   }
+
+  const lead = forBusiness
+    ? `${cancelledByLabel} una reserva de turno en tu empresa <b>${businessData.name}</b>. Estos eran los datos de la reserva cancelada:`
+    : `${cancelledByLabel} un turno que tenías asignado en <b>${businessData.name}</b>. Estos eran los datos de la reserva cancelada:`;
 
   const html = buildEmail({
     previewText: await cancellationPreview(appointmentData),
     badge: "Reserva cancelada",
-    bannerTitle: "Reserva cancelada",
-    lead: `${cancelledByLabel} una reserva de turno en tu empresa <b>${businessData.name}</b>. Estos eran los datos de la reserva cancelada:`,
+    bannerTitle: forBusiness ? "Reserva cancelada" : "Se canceló un turno tuyo",
+    lead,
     rows: [
       { label: "Fecha y hora", value: appointmentDate },
       { label: "Servicio", value: appointmentData.service },
@@ -879,10 +967,77 @@ const SBusinessCancelledBooking = async (
     callouts,
   });
 
+  return {
+    subject: forBusiness
+      ? "Se canceló una reserva de turno"
+      : "Se canceló un turno que tenías asignado",
+    html,
+  };
+};
+
+const SBusinessCancelledBooking = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness,
+  cancelledBy: "client" | "owner" | "employee" = "client",
+  hadDeposit: boolean = false,
+  refundCause: RefundCause = null,
+  refunded: boolean = false
+) => {
+  const resend = new Resend(process.env.RESEND_KEY);
+  const { subject, html } = await buildCancellationNotification(
+    appointmentData,
+    businessData,
+    cancelledBy,
+    hadDeposit,
+    refundCause,
+    refunded,
+    "business"
+  );
+
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [businessData.email],
-    subject: "Se canceló una reserva de turno",
+    subject,
+    html,
+  });
+
+  if (error) {
+    return console.error({ error });
+  }
+};
+
+// El profesional asignado tiene que enterarse de que se le liberó el horario,
+// haya cancelado el cliente, el dueño u otro empleado.
+const SEmployeeCancelledBooking = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness,
+  cancelledBy: "client" | "owner" | "employee" = "client",
+  hadDeposit: boolean = false,
+  refundCause: RefundCause = null,
+  refunded: boolean = false
+) => {
+  if (!appointmentData.employeeID) return;
+
+  const employee = await EmployeeModel.findById(appointmentData.employeeID).select(
+    "email"
+  );
+  if (!employee || !employee.email) return;
+
+  const resend = new Resend(process.env.RESEND_KEY);
+  const { subject, html } = await buildCancellationNotification(
+    appointmentData,
+    businessData,
+    cancelledBy,
+    hadDeposit,
+    refundCause,
+    refunded,
+    "employee"
+  );
+
+  const { error } = await resend.emails.send({
+    from: "SacaTurno <noresponder@sacaturno.com.ar>",
+    to: [employee.email],
+    subject,
     html,
   });
 
@@ -897,6 +1052,7 @@ const SClientCancelledBooking = async (
   cancelledBy: "client" | "owner" | "employee",
   hadDeposit: boolean,
   depositAmount: number,
+  refundCause: RefundCause,
   refunded: boolean
 ) => {
   const appointmentDate = capitalize(
@@ -916,26 +1072,34 @@ const SClientCancelledBooking = async (
 
   const callouts: EmailCallout[] = [];
   if (hadDeposit) {
-    if (byBusiness) {
-      if (refunded) {
-        callouts.push({
-          tone: "success",
-          title: `Se te reembolsó la seña de $ ${depositAmount.toLocaleString(
-            "es-AR"
-          )} vía Mercado Pago.`,
-          text: "La acreditación puede demorar según tu medio de pago.",
-        });
-      } else {
-        callouts.push({
-          tone: "warning",
-          title: "El reembolso de tu seña está en proceso.",
-          text: `Si no lo ves acreditado, contactate con ${businessData.name} al ${telLink(businessData.phone)}.`,
-        });
-      }
+    if (!refundCause) {
+      callouts.push({
+        tone: "warning",
+        title: `La seña de $ ${depositAmount.toLocaleString(
+          "es-AR"
+        )} no se reembolsa, porque la cancelación la hiciste vos.`,
+      });
+    } else if (refunded) {
+      // El cliente que cancela y aun así recupera la plata necesita saber por qué,
+      // o va a asumir que fue un error.
+      const why =
+        refundCause === "reassigned"
+          ? `${businessData.name} había cambiado el profesional o la sucursal de tu turno, así que la cancelación no tiene costo.`
+          : refundCause === "undo_grace"
+            ? `Cancelaste dentro de los ${BOOKING_UNDO_GRACE_MIN} minutos de haber reservado, así que la cancelación no tiene costo.`
+            : "La acreditación puede demorar según tu medio de pago.";
+      callouts.push({
+        tone: "success",
+        title: `Se te reembolsó la seña de $ ${depositAmount.toLocaleString(
+          "es-AR"
+        )} vía Mercado Pago.`,
+        text: why,
+      });
     } else {
       callouts.push({
         tone: "warning",
-        title: "La seña abonada no se reembolsa al cancelar el turno.",
+        title: "El reembolso de tu seña está en proceso.",
+        text: `Si no lo ves acreditado, contactate con ${businessData.name} al ${telLink(businessData.phone)}.`,
       });
     }
   }

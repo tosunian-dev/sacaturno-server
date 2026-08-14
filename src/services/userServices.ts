@@ -1,5 +1,5 @@
 import UserModel from "../models/userModel";
-import { encrypt, verify } from "../utils/pwEncrypt.handle";
+import { encrypt, verify, needsRehash } from "../utils/pwEncrypt.handle";
 import { IUser } from "../interfaces/user.interface";
 import { Request, Response } from "express";
 import { jwtGen, verifyToken } from "../utils/jwtGen.handle";
@@ -178,6 +178,17 @@ const SLoginUser = async ({
   const isPasswordCorrect = await verify(password, pwHashed);
   if (!isPasswordCorrect) {
     return "WRONG_PASSWORD";
+  }
+
+  // Rehash progresivo: sube al cost factor actual las passwords hasheadas con
+  // uno viejo. Si falla, el login sigue igual — es una mejora, no un requisito.
+  if (needsRehash(pwHashed)) {
+    try {
+      userExists.password = await encrypt(password);
+      await userExists.save();
+    } catch (error) {
+      console.error("Password rehash failed for user", userID, error);
+    }
   }
 
   const contexts = await buildUserContexts(userID);

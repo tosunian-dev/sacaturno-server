@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { Request } from "express";
+import { isValidObjectId } from "mongoose";
 import UserModel from "../models/userModel";
 import BusinessModel from "../models/businessModel";
 import AppointmentModel from "../models/appointmentModel";
@@ -8,6 +9,7 @@ import SubscriptionModel from "../models/subscriptionModel";
 import PlanPaymentModel from "../models/planPaymentModel";
 import EmployeeModel from "../models/employeeModel";
 import BranchModel from "../models/branchModel";
+import { PLAN_LIMITS, SubscriptionType } from "../config/planLimits";
 
 const DEFAULT_ACTIVITY_WINDOW_DAYS = 30;
 
@@ -409,6 +411,46 @@ const SGetUserDetail = async (req: Request) => {
   return { user, ...summary };
 };
 
+const VALID_PLANS = Object.keys(PLAN_LIMITS) as SubscriptionType[];
+
+// Asignación manual de plan desde backstage. A diferencia de SUpdateSubscriptionPlan
+// (alta vía MercadoPago) esto NO crea un PlanPayment: es una cortesía/ajuste del dueño
+// de la plataforma, no un cobro, y los reportes de ingresos suman PlanPaymentModel.price.
+const SUpdateBusinessSubscription = async ({ params, body }: Request) => {
+  const { businessId } = params;
+  const subscriptionType = body?.subscriptionType as SubscriptionType;
+
+  if (!VALID_PLANS.includes(subscriptionType)) return "INVALID_PLAN";
+  if (!isValidObjectId(businessId)) return "BUSINESS_NOT_FOUND";
+
+  const business = await BusinessModel.findById(businessId).select("ownerID").lean();
+  if (!business) return "BUSINESS_NOT_FOUND";
+
+  const now = dayjs();
+  let expiracyDate = subscriptionType === "SC_EXPIRED" ? now : now.add(1, "month");
+  if (body?.expiracyDate) {
+    const parsed = dayjs(body.expiracyDate);
+    if (!parsed.isValid()) return "INVALID_DATE";
+    expiracyDate = parsed.endOf("day");
+  }
+
+  return SubscriptionModel.findOneAndUpdate(
+    { businessID: businessId },
+    {
+      $set: {
+        subscriptionType,
+        expiracyDate: expiracyDate.toDate(),
+        paymentDate: now.toDate(),
+      },
+      // El aviso de vencimiento se manda una sola vez por ciclo (ver planExpiracy.ts);
+      // al mover la fecha hay que rehabilitarlo.
+      $unset: { expiryReminderSentAt: "" },
+      $setOnInsert: { businessID: businessId, ownerID: business.ownerID },
+    },
+    { new: true, upsert: true }
+  ).lean();
+};
+
 export {
   SGetOverview,
   SGetGrowth,
@@ -420,4 +462,5 @@ export {
   SGetBusinesses,
   SGetUsers,
   SGetUserDetail,
+  SUpdateBusinessSubscription,
 };

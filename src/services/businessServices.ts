@@ -17,6 +17,9 @@ import { generateAppointments } from "../utils/appointmentGenerator";
 import AppointmentModel from "../models/appointmentModel";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
+  if (typeof businessData.slug === "string") {
+    businessData.slug = businessData.slug.trim();
+  }
   // CHECK IF BUSINESS EXISTS
   const businessExists = await BusinessModel.find({
     $or: [{ ownerID: businessData.ownerID }, { name: businessData.name }],
@@ -86,6 +89,9 @@ const SGetBusinessByOwnerID = async ({ params }: Request) => {
 };
 
 const SEditBusinessData = async (businessData: IBusiness) => {
+  if (typeof businessData.slug === "string") {
+    businessData.slug = businessData.slug.trim();
+  }
   const slugExists = await BusinessModel.find({ slug: businessData.slug });
   if (
     slugExists.length === 0 ||
