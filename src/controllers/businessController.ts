@@ -20,6 +20,8 @@ import {
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 import { JwtContextPayload } from "../utils/jwtGen.handle";
 import { hasPermission } from "../utils/checkPermission";
+import { userCanAccessBusiness, resolveBusinessID } from "../utils/ownership";
+import ServiceModel from "../models/serviceModel";
 
 const createBusiness = async ({ body }: Request, res: Response) => {
   try {
@@ -42,8 +44,15 @@ const getBusinessByOwnerID = async (req: Request, res: Response) => {
   }
 };
 
-const editBusinessData = async ({ body }: Request, res: Response) => {
+const editBusinessData = async (req: RequestExtended, res: Response) => {
   try {
+    const { body } = req;
+    const user = req.user as JwtContextPayload;
+    // Solo el dueño edita los datos del negocio, y solo el suyo.
+    if (user?.role === "employee") return res.status(403).send("PERMISSION_DENIED");
+    if (!(await userCanAccessBusiness(user, body._id))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const editedBusiness = await SEditBusinessData(body);
     if (editedBusiness === "BUSINESS_NOT_FOUND") {
       return res.send({ msg: "BUSINESS_NOT_FOUND" });
@@ -126,6 +135,11 @@ const createService = async (req: RequestExtended, res: Response) => {
       const allowed = await hasPermission(user.employeeID!, "manage_services");
       if (!allowed) return res.status(403).send("PERMISSION_DENIED");
     }
+    // El servicio se crea sobre el negocio del body: verificamos que sea el del
+    // usuario, si no un dueño podría crear servicios en el negocio de otro.
+    if (!(await userCanAccessBusiness(user, req.body.businessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const businessData = await SCreateService(req.body);
     if (businessData === "SERVICE_LIMIT_REACHED") {
       return res.status(400).json({ msg: "SERVICE_LIMIT_REACHED" });
@@ -142,6 +156,11 @@ const deleteService = async (req: RequestExtended, res: Response) => {
     if (user?.role === "employee") {
       const allowed = await hasPermission(user.employeeID!, "manage_services");
       if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
+    const serviceBusinessID = await resolveBusinessID(ServiceModel, req.params.serviceID);
+    if (!serviceBusinessID) return res.status(404).send("SERVICE_NOT_FOUND");
+    if (!(await userCanAccessBusiness(user, serviceBusinessID))) {
+      return res.status(403).send("FORBIDDEN");
     }
     const businessData = await SDeleteService(req);
     res.send({ businessData, msg: "SERVICE_DELETED" });
@@ -181,6 +200,11 @@ const editService = async (req: RequestExtended, res: Response) => {
       const allowed = await hasPermission(user.employeeID!, "manage_services");
       if (!allowed) return res.status(403).send("PERMISSION_DENIED");
     }
+    const serviceBusinessID = await resolveBusinessID(ServiceModel, req.body.id);
+    if (!serviceBusinessID) return res.status(404).send("SERVICE_NOT_FOUND");
+    if (!(await userCanAccessBusiness(user, serviceBusinessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const editedService = await SEditServiceData(req.body);
     if (editedService === "SERVICE_NOT_FOUND") {
       return res.send({ msg: "SERVICE_NOT_FOUND" });
@@ -195,14 +219,9 @@ const editScheduleAutomationParams = async (req: RequestExtended, res: Response)
   try {
     const user = req.user as JwtContextPayload;
     if (user?.role === "employee") return res.status(403).send("PERMISSION_DENIED");
-    // Solo validamos scope si el token trae businessID. Un owner recién
-    // onboardeado obtiene su context token antes de crear el business, así que
-    // su token no tiene businessID y no debe ser rechazado.
-    if (
-      user?.role === "owner" &&
-      user.businessID &&
-      user.businessID !== req.params.businessID
-    ) {
+    // Verifica pertenencia por token (owner con contexto) o por base (owner recién
+    // onboardeado, cuyo token todavía no tiene businessID).
+    if (!(await userCanAccessBusiness(user, req.params.businessID))) {
       return res.status(403).send("FORBIDDEN");
     }
     const editedBusiness = await SEditScheduleAutomationParams(req);

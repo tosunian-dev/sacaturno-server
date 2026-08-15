@@ -4,7 +4,6 @@ import {
   getSubscriptionByOwnerID,
   createMercadoPagoPreference,
   paymentWebhook,
-  updateSubscriptionPlan,
   getAllPayments,
 } from "../controllers/subscriptionController";
 import { getPlanPrices } from "../controllers/planPricingController";
@@ -24,8 +23,11 @@ router.get(
   checkAuth,
   getSubscriptionByBusinessID
 );
-router.post("/subscription/pay/create-preference", createMercadoPagoPreference);
+router.post(
+  "/subscription/pay/create-preference",
+  checkAuth,
+  createMercadoPagoPreference
+);
 router.post("/subscription/webhook", paymentWebhook);
-router.put("/subscription/update", updateSubscriptionPlan);
 router.get("/subscription/payments/get/all/:userID", checkAuth, getAllPayments);
 export default router;

@@ -141,11 +141,14 @@ const SGetUser = async ({ params }: Request) => {
 };
 
 const SGetUserByEmail = async ({ params }: Request) => {
-  const user = await UserModel.findOne({ email: params.email });
+  // Endpoint PÚBLICO (lo usa el flujo de recuperación de contraseña, que solo
+  // necesita el _id). Devolver el documento entero filtraba el hash de la
+  // contraseña y toda la PII del usuario.
+  const user = await UserModel.findOne({ email: params.email }).select("_id");
   if (user === null) {
     return "USER_NOT_FOUND";
   }
-  return user;
+  return { _id: user._id };
 };
 
 const SEditUser = async (req: IUser) => {

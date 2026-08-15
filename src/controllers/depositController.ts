@@ -6,6 +6,7 @@ import {
   SReleaseDepositHold,
   SGetDepositStatus,
 } from "../services/depositServices";
+import { verifyMercadoPagoSignature } from "../utils/mpSignature";
 
 const createDepositPreference = async (req: Request, res: Response) => {
   try {
@@ -23,6 +24,17 @@ const createDepositPreference = async (req: Request, res: Response) => {
 };
 
 const depositWebhook = async (req: Request, res: Response) => {
+  // Firma inválida = no es MP. Rechazamos antes de tocar la base o consultar la
+  // API de pagos. Usa el secreto del webhook de la app marketplace (señas).
+  if (
+    !verifyMercadoPagoSignature(
+      req,
+      process.env.MP_MARKETPLACE_WEBHOOK_SECRET,
+      "deposit webhook"
+    )
+  ) {
+    return res.status(401).send("INVALID_SIGNATURE");
+  }
   try {
     await SDepositWebhook(req);
     res.status(200).send("OK"); // mp espera 200, si no reintenta

@@ -25,8 +25,8 @@ const router = Router();
 
 router.post("/appointment/create", checkAuth, createAppointment);
 router.post("/appointment/create/day", checkAuth, createAllDayAppointments);
-/** GET APPOINTMENTS BY BUSINESS ID */
-router.get("/appointment/get/:businessID", getAppointmentsByBusinessID);
+/** GET APPOINTMENTS BY BUSINESS ID (con PII: requiere auth + pertenencia) */
+router.get("/appointment/get/:businessID", checkAuth, getAppointmentsByBusinessID);
 /** GET USER'S BOOKED APPOINTMENTS */
 router.get(
   "/appointment/getclientapps/:clientID",
@@ -51,9 +51,10 @@ router.get("/appointment/cancel/info/:token", getCancelInfo);
 router.delete("/appointment/delete/:ID", checkAuth, deleteAppointment);
 /** GET PUBLIC APPOINTMENTS BY BUSINESS ID */
 router.get("/appointment/public/get/:businessID", getPublicAppsByBusinessID);
-/** GET TODAY APPOINTMENTS BY BUSINESS ID */
+/** GET TODAY APPOINTMENTS BY BUSINESS ID (con PII: requiere auth + pertenencia) */
 router.get(
   "/appointment/get/today/:businessID",
+  checkAuth,
   getTodayAppointmentsByBusinessID
 );
 /** GET DASHBOARD STATS BY BUSINESS ID */

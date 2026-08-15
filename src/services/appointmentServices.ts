@@ -618,10 +618,16 @@ const SGetAppointmentsByBusinessID = async ({ params }: Request) => {
 
 const SGetPublicAppsByBusinessID = async ({ params }: Request) => {
   const now = dayjs().format("YYYY/MM/DD");
+  // Endpoint PÚBLICO: solo los campos que la vista de reserva necesita. Nunca
+  // datos del cliente (name/email/phone/title) ni secretos (cancelToken,
+  // mpPaymentID/mpPreferenceID), que permitirían scrapear la base de clientes o
+  // cancelar turnos ajenos con el token del email.
   const appointments = await AppointmentModel.find({
     start: { $gte: new Date(now) },
     businessID: params.businessID,
-  });
+  }).select(
+    "_id start end status service price employeeID branchID businessID description"
+  );
   return appointments;
 };
 

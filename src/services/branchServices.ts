@@ -39,20 +39,37 @@ const SCreateBranch = async ({ body }: Request) => {
   const isFirstBranch = activeCount === 0;
   let assignedSchedules = 0;
   let assignedAppointments = 0;
-  let assignedEmployees = 0;
+
+  // El panel manda la selección explícita de empleados que atienden acá. Si no
+  // viene (llamadas viejas), se mantiene la inferencia automática de siempre.
+  const selectedEmployees: string[] | null = Array.isArray(body.employeeIDs)
+    ? body.employeeIDs.map(String).filter((id: string, i: number, all: string[]) => all.indexOf(id) === i)
+    : null;
 
   if (isFirstBranch) {
     // Un empleado dado de alta antes de que existiera cualquier sucursal quedó
     // con `branches: []` y por eso no califica para ningún turno. Con una sola
-    // sucursal la inferencia es exacta: atiende ahí.
-    const employeesResult = await EmployeeModel.updateMany(
+    // sucursal la inferencia es exacta: atiende ahí. Los activos que el dueño
+    // destildó quedan afuera: la selección manual pisa la inferencia.
+    let excluded: string[] = [];
+    if (selectedEmployees) {
+      const activeEmployees = await EmployeeModel.find({
+        businessID: body.businessID,
+        status: "active",
+      }).select("_id");
+      excluded = activeEmployees
+        .map((e) => String(e._id))
+        .filter((id) => !selectedEmployees.includes(id));
+    }
+
+    await EmployeeModel.updateMany(
       {
         businessID: body.businessID,
+        _id: { $nin: excluded },
         $or: [{ branches: { $size: 0 } }, { branches: { $exists: false } }],
       },
       { $set: { branches: [String(branch._id)] } }
     );
-    assignedEmployees = employeesResult.modifiedCount ?? 0;
 
     const schedulesResult = await AppointmentScheduleModel.updateMany(
       { businessID: body.businessID, $or: [{ branchID: null }, { branchID: { $exists: false } }] },
@@ -70,6 +87,21 @@ const SCreateBranch = async ({ body }: Request) => {
     assignedAppointments = appointmentsResult.modifiedCount ?? 0;
   }
 
+  if (selectedEmployees && selectedEmployees.length > 0) {
+    await EmployeeModel.updateMany(
+      { businessID: body.businessID, _id: { $in: selectedEmployees } },
+      { $addToSet: { branches: String(branch._id) } }
+    );
+  }
+
+  // Se relee en vez de sumar modifiedCount: los dos updates de arriba se pueden
+  // pisar entre sí y acá lo que importa es quién quedó realmente en la sucursal.
+  const branchEmployees = await EmployeeModel.find({
+    businessID: body.businessID,
+    branches: String(branch._id),
+  }).select("_id");
+  const assignedEmployeeIDs = branchEmployees.map((e) => String(e._id));
+
   // A partir de la segunda sucursal ya no se puede inferir nada: el total sirve
   // para dimensionarle al usuario cuánto hay disponible para redistribuir.
   const totalSchedules = isFirstBranch
@@ -81,7 +113,8 @@ const SCreateBranch = async ({ body }: Request) => {
     isFirstBranch,
     assignedSchedules,
     assignedAppointments,
-    assignedEmployees,
+    assignedEmployees: assignedEmployeeIDs.length,
+    assignedEmployeeIDs,
     totalSchedules,
   };
 };

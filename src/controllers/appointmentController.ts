@@ -25,6 +25,8 @@ import {
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 import { JwtContextPayload } from "../utils/jwtGen.handle";
 import { hasPermission } from "../utils/checkPermission";
+import { userCanAccessBusiness, resolveBusinessID } from "../utils/ownership";
+import AppointmentModel from "../models/appointmentModel";
 
 const createAppointment = async (req: RequestExtended, res: Response) => {
   try {
@@ -34,6 +36,9 @@ const createAppointment = async (req: RequestExtended, res: Response) => {
         (await hasPermission(user.employeeID!, "manage_own_appointments")) ||
         (await hasPermission(user.employeeID!, "manage_all_appointments"));
       if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
+    if (!(await userCanAccessBusiness(user, req.body.businessID))) {
+      return res.status(403).send("FORBIDDEN");
     }
     const appointmentData = await SCreateAppointment(req.body);
     if (appointmentData === "APPOINTMENT_LIMIT_REACHED") return res.status(400).send("APPOINTMENT_LIMIT_REACHED");
@@ -60,8 +65,14 @@ const bookAppointment = async ({ body }: Request, res: Response) => {
   }
 };
 
-const getAppointmentByID = async (req: Request, res: Response) => {
+const getAppointmentByID = async (req: RequestExtended, res: Response) => {
   try {
+    const user = req.user as JwtContextPayload;
+    const apptBusinessID = await resolveBusinessID(AppointmentModel, req.params.ID);
+    if (!apptBusinessID) return res.status(404).send("APPOINTMENT_NOT_FOUND");
+    if (!(await userCanAccessBusiness(user, apptBusinessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const appointmentBooked = await SGetAppointmentByID(req);
     res.send(appointmentBooked);
   } catch (error) {
@@ -69,8 +80,12 @@ const getAppointmentByID = async (req: Request, res: Response) => {
   }
 };
 
-const getAppointmentsByBusinessID = async (req: Request, res: Response) => {
+const getAppointmentsByBusinessID = async (req: RequestExtended, res: Response) => {
   try {
+    const user = req.user as JwtContextPayload;
+    if (!(await userCanAccessBusiness(user, req.params.businessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const appointmentBooked = await SGetAppointmentsByBusinessID(req);
     res.send(appointmentBooked);
   } catch (error) {
@@ -172,6 +187,11 @@ const deleteAppointment = async (req: RequestExtended, res: Response) => {
         (await hasPermission(user.employeeID!, "manage_all_appointments"));
       if (!allowed) return res.status(403).send("PERMISSION_DENIED");
     }
+    const apptBusinessID = await resolveBusinessID(AppointmentModel, req.params.ID);
+    if (!apptBusinessID) return res.status(404).send("APPOINTMENT_NOT_FOUND");
+    if (!(await userCanAccessBusiness(user, apptBusinessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const appointmentDeleted = await SDeleteAppointment(req);
     res.send(appointmentDeleted);
   } catch (error) {
@@ -238,10 +258,14 @@ const getPublicAppsByBusinessID = async (req: Request, res: Response) => {
 };
 
 const getTodayAppointmentsByBusinessID = async (
-  req: Request,
+  req: RequestExtended,
   res: Response
 ) => {
   try {
+    const user = req.user as JwtContextPayload;
+    if (!(await userCanAccessBusiness(user, req.params.businessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const appointmentBooked = await SGetTodayAppointmentsByBusinessID(req);
     res.send(appointmentBooked);
   } catch (error) {
@@ -249,8 +273,19 @@ const getTodayAppointmentsByBusinessID = async (
   }
 };
 
-const createAllDayAppointments = async ({ body }: Request, res: Response) => {
+const createAllDayAppointments = async (req: RequestExtended, res: Response) => {
   try {
+    const { body } = req;
+    const user = req.user as JwtContextPayload;
+    if (user?.role === "employee") {
+      const allowed =
+        (await hasPermission(user.employeeID!, "manage_own_appointments")) ||
+        (await hasPermission(user.employeeID!, "manage_all_appointments"));
+      if (!allowed) return res.status(403).send("PERMISSION_DENIED");
+    }
+    if (!(await userCanAccessBusiness(user, body.businessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
     const appointmentData = await SCreateAllDayAppointments(body);
     if (appointmentData === "APPOINTMENT_LIMIT_REACHED") return res.status(400).send("APPOINTMENT_LIMIT_REACHED");
     res.send({ appointmentData, msg: "APPOINTMENT_CREATED" });

@@ -32,7 +32,10 @@ const SGetSubscriptionByOwnerID = async ({ params }: Request) => {
   return subscriptionData;
 };
 
-const SCreateMercadoPagoPreference = async (req: Request) => {
+const SCreateMercadoPagoPreference = async (
+  req: Request,
+  auth: { ownerID: string; businessID: string; email: string }
+) => {
   const targetPlan = req.body.targetPlan;
   if (!isPaidPlan(targetPlan)) return "INVALID_PLAN";
 
@@ -45,9 +48,9 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
       {
         id: `${targetPlan}_PLAN`,
         title: PLAN_LABELS[targetPlan],
-        quantity: Number(req.body.quantity),
+        quantity: 1,
         unit_price: getPlanPrice(targetPlan),
-        currency_id: req.body.currency_id,
+        currency_id: "ARS",
       },
     ],
     back_urls: {
@@ -56,13 +59,15 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
       pending: `${process.env.FRONTEND_URL}/admin/account/subscription`,
     },
     auto_return: "approved",
+    // Identidad tomada del token/base (auth), no del body: evita que el cliente
+    // dispare el pago a nombre de otro dueño o negocio.
     metadata: {
-      email: req.body.email,
-      businessID: req.body.businessID,
-      ownerID: req.body.ownerID,
+      email: auth.email,
+      businessID: auth.businessID,
+      ownerID: auth.ownerID,
       targetPlan,
     },
-    external_reference: req.body.ownerID,
+    external_reference: auth.ownerID,
     notification_url: "https://sacaturno-server-production.up.railway.app/api/subscription/webhook"
   };
 
@@ -74,7 +79,16 @@ const SCreateMercadoPagoPreference = async (req: Request) => {
   }
 };
 
-const SUpdateSubscriptionPlan = async ({ body }: Request) => {
+// Recibe el objeto directo (lo llama el webhook en proceso, ya no una ruta HTTP).
+const SUpdateSubscriptionPlan = async (body: {
+  businessID: string;
+  subscriptionType: string;
+  paymentDate: Date;
+  expiracyDate: Date;
+  email: string;
+  mpPaymentID: string;
+  amountPaid?: number;
+}) => {
   try {
     const updated = await SubscriptionModel.findOneAndUpdate(
       { businessID: body.businessID },

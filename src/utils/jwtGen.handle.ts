@@ -1,6 +1,17 @@
 import { sign, verify } from 'jsonwebtoken'
-const jwt_secret = process.env.JWT_SECRET || 'A'
-const superadmin_jwt_secret = process.env.SUPERADMIN_JWT_SECRET || 'B'
+
+// Sin fallback a propósito: un secreto por defecto ('A'/'B') convierte un typo
+// en la env var en un compromiso total (cualquiera firma tokens de usuario o de
+// superadmin). Preferimos que el proceso no arranque a que arranque inseguro.
+const jwt_secret = process.env.JWT_SECRET
+const superadmin_jwt_secret = process.env.SUPERADMIN_JWT_SECRET
+
+if (!jwt_secret) {
+    throw new Error('JWT_SECRET no está configurado — abortando arranque del servidor')
+}
+if (!superadmin_jwt_secret) {
+    throw new Error('SUPERADMIN_JWT_SECRET no está configurado — abortando arranque del servidor')
+}
 
 export interface JwtContextPayload {
     userId: string;

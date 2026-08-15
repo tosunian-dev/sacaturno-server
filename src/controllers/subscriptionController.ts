@@ -8,10 +8,15 @@ import {
 } from "../services/subscriptionServices";
 import { handleError } from "../utils/error.handle";
 import { Request, Response } from "express";
+import { isValidObjectId } from "mongoose";
 import SubscriptionModel from "../models/subscriptionModel";
+import BusinessModel from "../models/businessModel";
 import dayjs from "dayjs";
 import PlanPaymentModel from "../models/planPaymentModel";
 import { isPaidPlan } from "../config/planLimits";
+import { RequestExtended } from "../interfaces/reqExtended.interface";
+import { JwtContextPayload } from "../utils/jwtGen.handle";
+import { verifyMercadoPagoSignature } from "../utils/mpSignature";
 
 const getSubscriptionByBusinessID = async (req: Request, res: Response) => {
   try {
@@ -37,9 +42,25 @@ const getSubscriptionByOwnerID = async (req: Request, res: Response) => {
   }
 };
 
-const createMercadoPagoPreference = async (req: Request, res: Response) => {
+const createMercadoPagoPreference = async (req: RequestExtended, res: Response) => {
   try {
-    const preferenceData = await SCreateMercadoPagoPreference(req);
+    // Identidad y monto vienen del token + la base, nunca del body: así el
+    // cliente no puede crear una preferencia a nombre de otro dueño/negocio.
+    const user = req.user as JwtContextPayload;
+    const ownerID = user?.userId;
+    if (!ownerID) return res.status(401).send("NOT_AUTHENTICATED");
+
+    const { businessID } = req.body;
+    if (!isValidObjectId(businessID)) return res.status(400).send("INVALID_BUSINESS");
+
+    const business = await BusinessModel.findOne({ _id: businessID, ownerID }).select("_id email");
+    if (!business) return res.status(403).send("FORBIDDEN");
+
+    const preferenceData = await SCreateMercadoPagoPreference(req, {
+      ownerID,
+      businessID: String(business._id),
+      email: business.email,
+    });
     if (preferenceData === "INVALID_PLAN") {
       return res.status(400).send("INVALID_PLAN");
     }
@@ -53,10 +74,16 @@ const createMercadoPagoPreference = async (req: Request, res: Response) => {
 };
 
 const paymentWebhook = async (req: Request, res: Response) => {
+  // Rechazamos de entrada toda notificación cuya firma no valide: sin esto,
+  // cualquiera que conozca un payment.id puede disparar el webhook.
+  if (!verifyMercadoPagoSignature(req, process.env.MP_WEBHOOK_SECRET, "subscription webhook")) {
+    return res.status(401).send("INVALID_SIGNATURE");
+  }
+
   const paymentInfo = req.body;
-  console.log('paymentinfo', paymentInfo);
-  
+
   try {
+    if (!paymentInfo?.data?.id) return res.status(200).send("OK");
     const paymentExists = await PlanPaymentModel.find({
       mpPaymentID: paymentInfo.data.id,
     });
@@ -87,25 +114,19 @@ const paymentWebhook = async (req: Request, res: Response) => {
               return;
             }
             const updatedSubscription = {
-              userID: data.metadata.owner_id,
               email: data.metadata.email,
               businessID: data.metadata.business_id,
               subscriptionType: targetPlan,
               paymentDate: paymentDate.toDate(),
               expiracyDate: expiracyDate.toDate(),
               mpPaymentID: paymentInfo.data.id,
-              // Monto realmente cobrado por MP; el reporte de ingresos usa esto,
-              // no el precio re-derivado (que puede cambiar entre pago y webhook).
               amountPaid: data.transaction_amount,
             };
-            await axios
-              .put(
-                `${process.env.BACKEND_URL}/subscription/update`,
-                updatedSubscription
-              )
-              .then((data) => {
-                console.log("updatesubresponse", data.data);
-              });
+            // Llamada directa en proceso: antes era un PUT HTTP a
+            // /subscription/update, una ruta pública que permitía a cualquiera
+            // asignarse un plan sin pagar. Al invocar el servicio acá, esa ruta
+            // deja de existir y se cierra el bypass de monetización.
+            await SUpdateSubscriptionPlan(updatedSubscription);
           }
         })
         .catch((error: any) => {
@@ -114,15 +135,6 @@ const paymentWebhook = async (req: Request, res: Response) => {
     }
   } catch (error) {}
   return res.status(200).send('OK')
-};
-
-const updateSubscriptionPlan = async (req: Request, res: Response) => {
-  try {
-    const update = await SUpdateSubscriptionPlan(req);
-    return update;
-  } catch (error) {
-    handleError(res, "ERROR_UPDATE_SUBSCRIPTION");
-  }
 };
 
 const getAllPayments = async (req: Request, res: Response) => {
@@ -139,6 +151,5 @@ export {
   getSubscriptionByBusinessID,
   createMercadoPagoPreference,
   paymentWebhook,
-  updateSubscriptionPlan,
   getAllPayments,
 };
