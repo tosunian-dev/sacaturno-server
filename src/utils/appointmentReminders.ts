@@ -48,7 +48,7 @@ export const handleAppointmentReminders = async () => {
     for (const apt of appointments) {
       try {
         const [business, subscription] = await Promise.all([
-          BusinessModel.findById(apt.businessID).select("name email phone address"),
+          BusinessModel.findById(apt.businessID).select("name email phone street number city province"),
           SubscriptionModel.findOne({ businessID: apt.businessID }).select("subscriptionType"),
         ]);
 

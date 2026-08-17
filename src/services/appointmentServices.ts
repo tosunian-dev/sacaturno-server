@@ -20,6 +20,7 @@ import advanced from "dayjs/plugin/advancedFormat";
 import DayScheduleModel from "../models/dayScheduleModel";
 import AppointmentScheduleModel from "../models/appointmentScheduleModel";
 import { buildEmail, EmailCallout, EmailRow, telLink } from "../utils/emailTemplate";
+import { composeAddress } from "../utils/address";
 
 dayjs.extend(timezone);
 dayjs.extend(utc);
@@ -251,9 +252,13 @@ const SClientEmailBookedAppointment = async (
       ? `Podés deshacer esta reserva dentro de los primeros ${BOOKING_UNDO_GRACE_MIN} minutos y se te devuelve la seña. Pasado ese rato, si cancelás vos la seña no se reembolsa; si el turno lo cancela el negocio, se te devuelve por Mercado Pago. `
       : "";
 
-  const afterCtaText = `${windowNote}${depositNote}¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${telLink(
-    businessData.phone
-  )}</b>.`;
+  const contactPhone = await SResolveAppointmentPhone(appointmentData, businessData);
+  const contactNote = contactPhone
+    ? `¿Ingresaste algún dato erróneo o tenés una consulta? Contactá al negocio: <b>${telLink(
+        contactPhone
+      )}</b>.`
+    : "";
+  const afterCtaText = `${windowNote}${depositNote}${contactNote}`;
 
   const html = buildEmail({
     previewText: `El ${fecha} a las ${s.format("HH:mm")} hs tenés turno para ${
@@ -373,6 +378,10 @@ const SClientReassignedBooking = async (
   const fecha = capitalize(s.format("dddd D [de] MMMM"));
   const displayAddress = await SResolveAppointmentAddress(appointmentData, businessData);
   const contextRows = await appointmentContextRows(appointmentData);
+  const contactPhone = await SResolveAppointmentPhone(appointmentData, businessData);
+  const contactNote = contactPhone
+    ? ` ¿Dudas? Escribile al negocio: <b>${telLink(contactPhone)}</b>.`
+    : "";
 
   const cancelUrl = appointmentData.cancelToken
     ? `${process.env.FRONTEND_URL}/cancelar/${appointmentData.cancelToken}`
@@ -412,10 +421,8 @@ const SClientReassignedBooking = async (
       ? { label: "No me sirve, cancelar turno", url: cancelUrl, style: "outline" }
       : undefined,
     afterCtaText: cancelUrl
-      ? `Si el cambio no te sirve podés cancelar sin costo y <b>se te devuelve la seña</b>, porque el cambio no lo hiciste vos. ¿Dudas? Escribile al negocio: <b>${telLink(
-          businessData.phone
-        )}</b>.`
-      : `¿Dudas? Escribile al negocio: <b>${telLink(businessData.phone)}</b>.`,
+      ? `Si el cambio no te sirve podés cancelar sin costo y <b>se te devuelve la seña</b>, porque el cambio no lo hiciste vos.${contactNote}`
+      : contactNote.trim(),
   });
 
   const resend = new Resend(process.env.RESEND_KEY);
@@ -1067,6 +1074,7 @@ const SClientCancelledBooking = async (
       .format("dddd D [de] MMMM [|] HH:mm [hs]")
   );
   const resend = new Resend(process.env.RESEND_KEY);
+  const contactPhone = await SResolveAppointmentPhone(appointmentData, businessData);
 
   const byBusiness = cancelledBy !== "client";
   const bannerTitle = byBusiness
@@ -1105,7 +1113,9 @@ const SClientCancelledBooking = async (
       callouts.push({
         tone: "warning",
         title: "El reembolso de tu seña está en proceso.",
-        text: `Si no lo ves acreditado, contactate con ${businessData.name} al ${telLink(businessData.phone)}.`,
+        text: contactPhone
+          ? `Si no lo ves acreditado, contactate con ${businessData.name} al ${telLink(contactPhone)}.`
+          : `Si no lo ves acreditado, contactate con ${businessData.name}.`,
       });
     }
   }
@@ -1121,7 +1131,9 @@ const SClientCancelledBooking = async (
       { label: "Fecha y hora", value: appointmentDate },
     ],
     callouts,
-    afterCtaText: `Si tenés alguna consulta, contactate con ${businessData.name} al <b>${telLink(businessData.phone)}</b>.`,
+    afterCtaText: contactPhone
+      ? `Si tenés alguna consulta, contactate con ${businessData.name} al <b>${telLink(contactPhone)}</b>.`
+      : undefined,
   });
 
   const { error } = await resend.emails.send({
@@ -1305,7 +1317,7 @@ const SGetCancelledAppointments = async ({ params }: Request) => {
 };
 
 // Una vez que el negocio tiene sucursales cargadas, ellas son la única fuente de
-// verdad para direcciones — businessData.address queda oculta para evitar mostrar
+// verdad para direcciones — el domicilio del negocio queda oculto para evitar mostrar
 // una ubicación genérica/ambigua cuando hay varios locales.
 const SResolveAppointmentAddress = async (
   appointmentData: IAppointment,
@@ -1316,15 +1328,31 @@ const SResolveAppointmentAddress = async (
       _id: appointmentData.branchID,
       deletedAt: null,
     }).select("street number city");
-    if (branch) {
-      return [`${branch.street} ${branch.number}`, branch.city].filter(Boolean).join(", ");
-    }
+    if (branch) return composeAddress(branch) || null;
   }
 
   const hasBranches = await BranchModel.exists({ businessID: businessData._id, deletedAt: null });
   if (hasBranches) return null;
 
-  return businessData.address || null;
+  return composeAddress(businessData) || null;
+};
+
+// A diferencia de la dirección, el teléfono del negocio no se oculta cuando hay
+// sucursales: es el contacto por defecto y la sucursal del turno sólo lo pisa
+// cuando cargó uno propio.
+const SResolveAppointmentPhone = async (
+  appointmentData: IAppointment,
+  businessData: IBusiness
+): Promise<number | null> => {
+  if (appointmentData.branchID) {
+    const branch = await BranchModel.findOne({
+      _id: appointmentData.branchID,
+      deletedAt: null,
+    }).select("phone");
+    if (branch?.phone) return branch.phone;
+  }
+
+  return businessData.phone || null;
 };
 
 const SClientReminderEmail = async (
@@ -1335,6 +1363,7 @@ const SClientReminderEmail = async (
   const resend = new Resend(process.env.RESEND_KEY);
   const displayAddress = await SResolveAppointmentAddress(appointmentData, businessData);
   const contextRows = await appointmentContextRows(appointmentData);
+  const contactPhone = await SResolveAppointmentPhone(appointmentData, businessData);
 
   const s = dayjs(appointmentData.start).tz(APPT_TZ);
   const appointmentDate = capitalize(s.format("dddd D [de] MMMM"));
@@ -1378,7 +1407,9 @@ const SClientReminderEmail = async (
     greeting: `¡Hola ${appointmentData.name}!`,
     lead: `Te esperamos en <b>${businessData.name}</b>. Estos son los datos de tu turno:`,
     rows,
-    afterCtaText: `Si no podés asistir o tenés alguna consulta, contactate con el negocio al: <b>${telLink(businessData.phone)}</b>.`,
+    afterCtaText: contactPhone
+      ? `Si no podés asistir o tenés alguna consulta, contactate con el negocio al: <b>${telLink(contactPhone)}</b>.`
+      : undefined,
   });
 
   const { error } = await resend.emails.send({

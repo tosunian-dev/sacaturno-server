@@ -29,7 +29,7 @@ const SCreateBranch = async ({ body }: Request) => {
     number: body.number,
     city: body.city ?? null,
     province: body.province ?? null,
-    phone: body.phone,
+    phone: body.phone ?? null,
     email: body.email ?? null,
   });
 
@@ -177,7 +177,7 @@ const SDeleteBranch = async ({ params, body }: Request) => {
 };
 
 const SGetPublicBranchesByBusiness = async (businessID: string) => {
-  return BranchModel.find({ businessID, deletedAt: null }).select("_id name street number city province");
+  return BranchModel.find({ businessID, deletedAt: null }).select("_id name street number city province phone");
 };
 
 export { SGetBranchesByBusiness, SCreateBranch, SEditBranch, SDeleteBranch, SGetPublicBranchesByBusiness };

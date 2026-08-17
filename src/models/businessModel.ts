@@ -28,9 +28,27 @@ const BusinessSchema = new Schema<IBusiness>(
       type: Number,
       required: false,
     },
-    address: {
+    // Domicilio con la misma estructura que las sucursales (ver branchModel),
+    // para que ambos se compongan y se muestren igual. Opcional en el negocio.
+    street: {
       type: String,
       required: false,
+      default: "",
+    },
+    number: {
+      type: String,
+      required: false,
+      default: "",
+    },
+    city: {
+      type: String,
+      required: false,
+      default: "",
+    },
+    province: {
+      type: String,
+      required: false,
+      default: "",
     },
     slug: {
       type: String,

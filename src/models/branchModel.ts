@@ -10,7 +10,7 @@ const BranchSchema = new Schema<IBranch>(
     number: { type: String, required: true },
     city: { type: String, required: false },
     province: { type: String, required: false },
-    phone: { type: Number, required: true },
+    phone: { type: Number, required: false, default: null },
     email: { type: String, required: false },
     deletedAt: { type: Date, required: false, default: null },
   },

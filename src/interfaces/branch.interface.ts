@@ -7,7 +7,7 @@ export interface IBranch {
   number: string;
   city?: string;
   province?: string;
-  phone: number;
+  phone?: number | null;
   email?: string;
   deletedAt?: Date | null;
 }

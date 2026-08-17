@@ -3,7 +3,10 @@ export interface IBusiness {
   name: string;
   businessCategory?: string;
   businessType: string;
-  address?: string;
+  street?: string;
+  number?: string;
+  city?: string;
+  province?: string;
   phone: number;
   image: string;
   _id?: string;
