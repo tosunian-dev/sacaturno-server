@@ -3,7 +3,11 @@ import { encrypt, verify, needsRehash } from "../utils/pwEncrypt.handle";
 import { IUser } from "../interfaces/user.interface";
 import { Request, Response } from "express";
 import { jwtGen, verifyToken } from "../utils/jwtGen.handle";
-import fs from "fs";
+import {
+  uploadImage,
+  deleteImage,
+  isCloudinaryConfigured,
+} from "../config/cloudinary";
 import { Resend } from "resend";
 import { buildEmail } from "../utils/emailTemplate";
 import { JwtPayload } from "jsonwebtoken";
@@ -35,9 +39,12 @@ const buildUserContexts = async (userID: string) => {
     });
   }
 
+  // El registro del dueño como prestador no es un contexto de empleado: sin
+  // este filtro el selector le ofrecería entrar dos veces a su propio negocio.
   const employees = await EmployeeModel.find({
     userID,
     status: "active",
+    isOwner: { $ne: true },
   }).select("_id businessID");
   for (const employee of employees) {
     const biz = await BusinessModel.findById(employee.businessID).select(
@@ -251,24 +258,28 @@ const SGoogleAuth = async (credential: string) => {
 };
 
 const SUpdateUserProfileImage = async (imageData: {
-  path: string;
+  buffer: Buffer;
   userId: string;
-  file_name: string;
 }) => {
-  const updatedUser = await UserModel.findOneAndUpdate(
+  if (!isCloudinaryConfigured()) {
+    return "CLOUDINARY_NOT_CONFIGURED";
+  }
+
+  const uploaded = await uploadImage(imageData.buffer);
+
+  // findOneAndUpdate sin `new` devuelve el documento previo, que es justo lo que
+  // hace falta para saber qué imagen vieja hay que borrar.
+  const previousUser = await UserModel.findOneAndUpdate(
     { _id: imageData.userId },
     {
-      profileImage: imageData.file_name,
+      profileImage: uploaded.url,
+      profileImagePublicId: uploaded.publicId,
     },
   );
-  if (updatedUser?.profileImage !== "user.png") {
-    fs.unlink(`profile_images\\${updatedUser?.profileImage}`, async (error) => {
-      if (error) {
-        return error;
-      }
-    });
-  }
-  return updatedUser;
+
+  await deleteImage(previousUser?.profileImagePublicId);
+
+  return await UserModel.findOne({ _id: imageData.userId });
 };
 
 const SSendPasswordRecoveryEmail = async ({ params }: Request) => {

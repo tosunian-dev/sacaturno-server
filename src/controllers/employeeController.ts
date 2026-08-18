@@ -12,6 +12,7 @@ import {
   SSelectContext,
   SGetMyEmployeeRecord,
   SGetPublicEmployeesByBusiness,
+  SSetOwnerAsProvider,
 } from "../services/employeeServices";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 
@@ -54,12 +55,35 @@ const updateEmployee = async (req: Request, res: Response) => {
     if (employee === "EMPLOYEE_NOT_FOUND") {
       return res.status(404).send("EMPLOYEE_NOT_FOUND");
     }
+    if (employee === "OWNER_RECORD_PROTECTED") {
+      return res.status(403).send("OWNER_RECORD_PROTECTED");
+    }
     if (typeof employee === "string" && ASSIGNMENT_ERRORS.includes(employee)) {
       return res.status(422).send(employee);
     }
     res.send(employee);
   } catch (error) {
     handleError(res, "ERROR_UPDATE_EMPLOYEE");
+  }
+};
+
+const setOwnerAsProvider = async (req: RequestExtended, res: Response) => {
+  try {
+    const ownerID = (req.user as { userId: string })?.userId;
+    if (!ownerID) return res.status(401).send("UNAUTHORIZED");
+
+    const { businessID, enabled } = req.body;
+    if (!businessID || typeof enabled !== "boolean") {
+      return res.status(400).send("INVALID_PAYLOAD");
+    }
+
+    const result = await SSetOwnerAsProvider(businessID, ownerID, enabled);
+    if (result === "BUSINESS_NOT_FOUND") return res.status(404).send("BUSINESS_NOT_FOUND");
+    if (result === "USER_NOT_FOUND") return res.status(404).send("USER_NOT_FOUND");
+    if (result === "OWNER_EMAIL_CONFLICT") return res.status(409).send("OWNER_EMAIL_CONFLICT");
+    return res.status(200).json(result);
+  } catch (error) {
+    handleError(res, "ERROR_SET_OWNER_PROVIDER");
   }
 };
 
@@ -175,4 +199,5 @@ export {
   acceptInvitation,
   selectContext,
   getPublicEmployeesByBusiness,
+  setOwnerAsProvider,
 };

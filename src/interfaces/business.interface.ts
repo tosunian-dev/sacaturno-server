@@ -9,6 +9,7 @@ export interface IBusiness {
   province?: string;
   phone: number;
   image: string;
+  imagePublicId?: string;
   _id?: string;
   email: string;
   subscription?: string;

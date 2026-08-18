@@ -205,7 +205,8 @@ const SGetFeatureAdoption = async () => {
       BusinessModel.countDocuments(),
       ServiceModel.countDocuments(),
       ServiceModel.countDocuments({ depositAmount: { $gt: 0 } }),
-      EmployeeModel.distinct("businessID"),
+      // Publicarse a uno mismo como prestador no es "usar empleados".
+      EmployeeModel.distinct("businessID", { isOwner: { $ne: true } }),
       BranchModel.distinct("businessID"),
       BusinessModel.aggregate([{ $group: { _id: "$businessType", count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
       BusinessModel.aggregate([{ $group: { _id: "$businessCategory", count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
@@ -275,7 +276,12 @@ const SGetBusinesses = async (req: Request) => {
       { $group: { _id: "$businessID", lastActivity: { $first: "$createdAt" } } },
     ]),
     getActiveBusinessIds(),
-    EmployeeModel.aggregate([{ $match: { businessID: { $in: businessIds } } }, { $group: { _id: "$businessID", count: { $sum: 1 } } }]),
+    // El registro del dueño no ocupa plaza del plan: contarlo marcaría en exceso
+    // a cualquier negocio que se publique como prestador.
+    EmployeeModel.aggregate([
+      { $match: { businessID: { $in: businessIds }, isOwner: { $ne: true } } },
+      { $group: { _id: "$businessID", count: { $sum: 1 } } },
+    ]),
     BranchModel.aggregate([{ $match: { businessID: { $in: businessIds } } }, { $group: { _id: "$businessID", count: { $sum: 1 } } }]),
   ]);
 
@@ -309,7 +315,8 @@ const SGetBusinesses = async (req: Request) => {
 const buildUserSummary = async (userId: string) => {
   const [ownedBusinesses, memberships] = await Promise.all([
     BusinessModel.find({ ownerID: userId }).select("name slug businessType createdAt mpLinked").lean(),
-    EmployeeModel.find({ userID: userId }).select("businessID status permissions").lean(),
+    // El registro propio del dueño no es una membresía en otro negocio.
+    EmployeeModel.find({ userID: userId, isOwner: { $ne: true } }).select("businessID status permissions").lean(),
   ]);
 
   const ownedBusinessIds = ownedBusinesses.map((b) => String(b._id));

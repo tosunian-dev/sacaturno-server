@@ -66,14 +66,16 @@ const editBusinessData = async (req: RequestExtended, res: Response) => {
 const updateBusinessImage = async (req: RequestExtended, res: Response) => {
   try {
     const { user, file } = req;
-    const path: string = `${file?.path}`.split("\\")[4];
-
-    const data = {
-      file_name: `${file?.filename}`,
-      path,
+    if (!file?.buffer) {
+      return res.status(400).send({ error: "ERROR_NO_IMAGE_PROVIDED" });
+    }
+    const response_data = await SUpdateBusinessImage({
+      buffer: file.buffer,
       userId: `${user?.userId}`,
-    };
-    const response_data = await SUpdateBusinessImage(data);
+    });
+    if (response_data === "CLOUDINARY_NOT_CONFIGURED") {
+      return handleError(res, "CLOUDINARY_NOT_CONFIGURED");
+    }
     res.send(response_data);
   } catch (error) {
     handleError(res, "ERROR_UPLOAD_PROFILEPIC");
@@ -144,7 +146,12 @@ const createService = async (req: RequestExtended, res: Response) => {
     if (businessData === "SERVICE_LIMIT_REACHED") {
       return res.status(400).json({ msg: "SERVICE_LIMIT_REACHED" });
     }
-    res.send({ msg: "SERVICE_CREATED" });
+    if (businessData === "DEPOSIT_EXCEEDS_PRICE") {
+      return res.status(400).json({ msg: "DEPOSIT_EXCEEDS_PRICE" });
+    }
+    // Se devuelve el servicio creado para que el panel pueda reemplazar la card
+    // optimista por el registro real sin esperar un refetch.
+    res.send({ msg: "SERVICE_CREATED", service: businessData });
   } catch (error) {
     handleError(res, "ERROR_SERVICE_CREATION");
   }
@@ -206,6 +213,9 @@ const editService = async (req: RequestExtended, res: Response) => {
       return res.status(403).send("FORBIDDEN");
     }
     const editedService = await SEditServiceData(req.body);
+    if (editedService === "DEPOSIT_EXCEEDS_PRICE") {
+      return res.status(400).json({ msg: "DEPOSIT_EXCEEDS_PRICE" });
+    }
     if (editedService === "SERVICE_NOT_FOUND") {
       return res.send({ msg: "SERVICE_NOT_FOUND" });
     }

@@ -2,7 +2,11 @@ import { IBusiness } from "../interfaces/business.interface";
 import { IService } from "../interfaces/service.interface";
 import BusinessModel from "../models/businessModel";
 import { Request } from "express";
-import fs from "fs";
+import {
+  uploadImage,
+  deleteImage,
+  isCloudinaryConfigured,
+} from "../config/cloudinary";
 import ServiceModel from "../models/serviceModel";
 import EmployeeModel from "../models/employeeModel";
 import { isValidObjectId } from "mongoose";
@@ -112,22 +116,25 @@ const SEditBusinessData = async (businessData: IBusiness) => {
 };
 
 const SUpdateBusinessImage = async (imageData: {
-  path: string;
+  buffer: Buffer;
   userId: string;
-  file_name: string;
 }) => {
-  const updatedBusiness = await BusinessModel.findOneAndUpdate(
-    { ownerID: imageData.userId },
-    { image: imageData.file_name }
-  );
-  if (updatedBusiness?.image !== "user.png") {
-    fs.unlink(`profile_images\\${updatedBusiness?.image}`, async (error) => {
-      if (error) {
-        return error;
-      }
-    });
+  if (!isCloudinaryConfigured()) {
+    return "CLOUDINARY_NOT_CONFIGURED";
   }
-  return updatedBusiness;
+
+  const uploaded = await uploadImage(imageData.buffer);
+
+  // findOneAndUpdate sin `new` devuelve el documento previo, que es justo lo que
+  // hace falta para saber qué imagen vieja hay que borrar.
+  const previousBusiness = await BusinessModel.findOneAndUpdate(
+    { ownerID: imageData.userId },
+    { image: uploaded.url, imagePublicId: uploaded.publicId }
+  );
+
+  await deleteImage(previousBusiness?.imagePublicId);
+
+  return await BusinessModel.findOne({ ownerID: imageData.userId });
 };
 
 const SGetBusinessByName = async ({ params }: Request) => {
@@ -174,6 +181,11 @@ const MAX_SERVICES_PER_BUSINESS = 200;
 
 const SCreateService = async (serviceData: IService & { employeeIDs?: string[] }) => {
   const { employeeIDs, ...service } = serviceData;
+  // La seña se cobra por adelantado contra el precio del servicio: si lo supera,
+  // el cliente pagaría de más y el negocio quedaría debiéndole la diferencia.
+  if ((service.depositAmount ?? 0) > service.price) {
+    return "DEPOSIT_EXCEEDS_PRICE";
+  }
   const serviceCount = await ServiceModel.countDocuments({ businessID: service.businessID });
   if (serviceCount >= MAX_SERVICES_PER_BUSINESS) {
     return "SERVICE_LIMIT_REACHED";
@@ -212,7 +224,18 @@ const SEditServiceData = async (serviceData: {
   description: string;
   price: number;
   duration?: number;
+  depositAmount?: number;
 }) => {
+  // El body puede traer sólo algunos campos, así que los que faltan se comparan
+  // contra lo que ya está guardado.
+  const currentService = await ServiceModel.findById(serviceData.id);
+  if (!currentService) return "SERVICE_NOT_FOUND";
+  const price = serviceData.price ?? currentService.price;
+  const depositAmount = serviceData.depositAmount ?? currentService.depositAmount ?? 0;
+  if (depositAmount > price) {
+    return "DEPOSIT_EXCEEDS_PRICE";
+  }
+
   const editedService = await ServiceModel.findByIdAndUpdate(
     { _id: serviceData.id },
     serviceData,

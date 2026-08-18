@@ -48,6 +48,13 @@ const UserSchema = new Schema<IUser>(
       required: false,
       default: "user.png",
     },
+    // public_id de Cloudinary; sin esto no se puede borrar la imagen anterior.
+    // Vacío en documentos viejos, que siguen sirviéndose desde disco.
+    profileImagePublicId: {
+      type: String,
+      required: false,
+      default: "",
+    },
     verified: {
       type: Boolean,
       default: false,

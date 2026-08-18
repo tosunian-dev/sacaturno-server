@@ -12,6 +12,7 @@ import {
   acceptInvitation,
   selectContext,
   getPublicEmployeesByBusiness,
+  setOwnerAsProvider,
 } from "../controllers/employeeController";
 
 const router = Router();
@@ -25,6 +26,8 @@ router.post("/employee/select-context", checkAuth, selectContext);
 router.get("/employee/list/:businessID", checkAuth, getEmployeesByBusiness);
 router.post("/employee/create", checkAuth, createEmployee);
 router.post("/employee/:employeeID/resend-invite", checkAuth, resendInvitation);
+// Antes de /employee/:employeeID, si no "owner-provider" entraría como employeeID.
+router.put("/employee/owner-provider", checkAuth, setOwnerAsProvider);
 router.put("/employee/:employeeID", checkAuth, updateEmployee);
 router.delete("/employee/:employeeID", checkAuth, deleteEmployee);
 

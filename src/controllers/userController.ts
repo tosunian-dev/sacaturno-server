@@ -116,13 +116,16 @@ const getUserByEmail = async (req: Request, res: Response) => {
 const updateUserImage = async (req: RequestExtended, res: Response) => {
   try {
     const { user, file } = req;
-    const path: string = `${file?.path}`.split("\\")[4];
-    const data = {
-      file_name: `${file?.filename}`,
-      path,
+    if (!file?.buffer) {
+      return res.status(400).send({ error: "ERROR_NO_IMAGE_PROVIDED" });
+    }
+    const response_data = await SUpdateUserProfileImage({
+      buffer: file.buffer,
       userId: `${user?.userId}`,
-    };
-    const response_data = await SUpdateUserProfileImage(data);
+    });
+    if (response_data === "CLOUDINARY_NOT_CONFIGURED") {
+      return handleError(res, "CLOUDINARY_NOT_CONFIGURED");
+    }
     res.send(response_data);
   } catch (error) {
     handleError(res, "ERROR_UPLOAD_PROFILEPIC");

@@ -146,6 +146,8 @@ const SGetEligibleEmployeesForAppointment = async (appointmentData: IAppointment
   const query: Record<string, unknown> = {
     businessID: appointmentData.businessID,
     status: "active",
+    // El dueño ya recibe el aviso del negocio por este mismo turno.
+    isOwner: { $ne: true },
   };
   if (service) query.services = String(service._id);
   if (appointmentData.branchID) query.branches = appointmentData.branchID;
@@ -467,8 +469,11 @@ const SEmployeeEmailBookedAppointment = async (
 ) => {
   if (!appointmentData.employeeID) return;
 
-  const employee = await EmployeeModel.findById(appointmentData.employeeID).select("email");
+  const employee = await EmployeeModel.findById(appointmentData.employeeID).select("email isOwner");
   if (!employee || !employee.email) return;
+  // El dueño ya recibió el aviso del negocio: mandarle también el de profesional
+  // sería el mismo turno dos veces en la misma casilla.
+  if (employee.isOwner) return;
 
   const resend = new Resend(process.env.RESEND_KEY);
   const { subject, html } = await buildBookingNotification(
@@ -1032,9 +1037,11 @@ const SEmployeeCancelledBooking = async (
   if (!appointmentData.employeeID) return;
 
   const employee = await EmployeeModel.findById(appointmentData.employeeID).select(
-    "email"
+    "email isOwner"
   );
   if (!employee || !employee.email) return;
+  // Ya le llegó el aviso de cancelación como negocio: no se duplica.
+  if (employee.isOwner) return;
 
   const resend = new Resend(process.env.RESEND_KEY);
   const { subject, html } = await buildCancellationNotification(

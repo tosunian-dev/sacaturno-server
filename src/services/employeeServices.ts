@@ -19,7 +19,7 @@ import { jwtGen } from "../utils/jwtGen.handle";
 const SGetEmployeesByBusiness = async ({ params }: Request) => {
   const employees = await EmployeeModel.find({
     businessID: params.businessID,
-  }).select("_id name surname email status permissions branches services userID");
+  }).select("_id name surname email status permissions branches services userID isOwner");
 
   const userIDs = employees.map((e) => e.userID).filter((id): id is string => !!id);
   const profileImageMap: Record<string, string> = {};
@@ -37,6 +37,7 @@ const SGetEmployeesByBusiness = async ({ params }: Request) => {
     permissions: e.permissions,
     branches: e.branches,
     services: e.services,
+    isOwner: !!e.isOwner,
     profileImage: e.userID ? (profileImageMap[e.userID] ?? "user.png") : "user.png",
   }));
 };
@@ -118,7 +119,11 @@ const SCreateEmployee = async ({ body }: Request) => {
   const { maxEmployees } = getPlanLimits(subscription?.subscriptionType);
   if (maxEmployees === 0) return "PLAN_REQUIRED";
 
-  const employeeCount = await EmployeeModel.countDocuments({ businessID: body.businessID });
+  // El registro del dueño no es una plaza del plan: se cuenta sólo a los invitados.
+  const employeeCount = await EmployeeModel.countDocuments({
+    businessID: body.businessID,
+    isOwner: { $ne: true },
+  });
   if (employeeCount >= maxEmployees) return "EMPLOYEE_LIMIT_REACHED";
   const existing = await EmployeeModel.findOne({
     businessID: body.businessID,
@@ -247,8 +252,22 @@ const SResendInvitation = async (employeeID: string, ownerID: string) => {
 const SUpdateEmployee = async ({ body, params }: Request) => {
   const { ownerID, ...fields } = body;
 
-  const employee = await EmployeeModel.findOne({ _id: params.employeeID, ownerID }).select("businessID");
+  const employee = await EmployeeModel.findOne({ _id: params.employeeID, ownerID }).select("businessID isOwner");
   if (!employee) return "EMPLOYEE_NOT_FOUND";
+
+  // Del registro del dueño sólo se editan sus asignaciones. Identidad, permisos
+  // y estado los maneja el toggle de "prestador de servicio", no este endpoint.
+  const isOwnerRecord = !!employee.isOwner;
+  if (
+    isOwnerRecord &&
+    (fields.name !== undefined ||
+      fields.surname !== undefined ||
+      fields.email !== undefined ||
+      fields.status !== undefined ||
+      fields.permissions !== undefined)
+  ) {
+    return "OWNER_RECORD_PROTECTED";
+  }
 
   const allowedFields: Record<string, unknown> = {};
   if (fields.name !== undefined) allowedFields.name = fields.name;
@@ -282,9 +301,12 @@ const SUpdateEmployee = async ({ body, params }: Request) => {
 };
 
 const SDeleteEmployee = async ({ params, body }: Request) => {
+  // Borrar el registro del dueño dejaría turnos apuntando a un prestador
+  // inexistente: para dejar de publicarse se usa el toggle, que lo desactiva.
   const deleted = await EmployeeModel.findOneAndDelete({
     _id: params.employeeID,
     ownerID: body.ownerID,
+    isOwner: { $ne: true },
   });
   if (!deleted) return "EMPLOYEE_NOT_FOUND";
 
@@ -344,7 +366,13 @@ const SCheckEmployeeScheduleConflict = async (
 
 const SGetUserContexts = async (userID: string) => {
   const ownedBusiness = await BusinessModel.findOne({ ownerID: userID }).select("_id name");
-  const employeeRecords = await EmployeeModel.find({ userID, status: "active" }).select("_id businessID");
+  // El registro del dueño no es un contexto de empleado: si se colara acá, el
+  // selector de contexto le ofrecería entrar dos veces a su propio negocio.
+  const employeeRecords = await EmployeeModel.find({
+    userID,
+    status: "active",
+    isOwner: { $ne: true },
+  }).select("_id businessID");
 
   const contexts: Array<{ role: string; businessID: string; businessName: string; employeeID?: string }> = [];
   if (ownedBusiness) {
@@ -381,6 +409,7 @@ const SSelectContext = async (
       userID: userId,
       businessID,
       status: "active",
+      isOwner: { $ne: true },
     }).select("permissions");
     if (!employee) return "CONTEXT_NOT_AUTHORIZED";
     return {
@@ -396,9 +425,89 @@ const SSelectContext = async (
   return "INVALID_ROLE";
 };
 
+// El dueño se publica como prestador a través de un registro de empleado propio
+// (isOwner). Así los turnos, los filtros y la detección de conflictos lo tratan
+// igual que a cualquier otro, sin casos especiales repartidos por el código.
+// Despublicarse lo desactiva en vez de borrarlo: los turnos ya asignados tienen
+// que seguir resolviendo su nombre.
+const SSetOwnerAsProvider = async (
+  businessID: string,
+  ownerID: string,
+  enabled: boolean,
+) => {
+  const business = await BusinessModel.findOne({ _id: businessID, ownerID }).select("_id");
+  if (!business) return "BUSINESS_NOT_FOUND";
+
+  const user = await UserModel.findById(ownerID).select("name surname email profileImage");
+  if (!user) return "USER_NOT_FOUND";
+
+  const serialize = (employee: any) => ({
+    _id: employee._id,
+    name: employee.name,
+    surname: employee.surname,
+    email: employee.email,
+    status: employee.status,
+    permissions: employee.permissions ?? [],
+    branches: employee.branches ?? [],
+    services: employee.services ?? [],
+    isOwner: true,
+    profileImage: user.profileImage ?? "user.png",
+  });
+
+  // Lo que el negocio ofrece hoy. Es lo que se le asigna al dueño la primera
+  // vez, y lo que rellena su lista si quedó vacía (se publicó antes de tener
+  // servicios o sucursales cargados).
+  const [services, branches] = await Promise.all([
+    ServiceModel.find({ businessID }).select("_id"),
+    BranchModel.find({ businessID, deletedAt: null }).select("_id"),
+  ]);
+  const allServiceIDs = services.map((s) => String(s._id));
+  const allBranchIDs = branches.map((b) => String(b._id));
+
+  const existing = await EmployeeModel.findOne({ businessID, isOwner: true });
+
+  if (existing) {
+    existing.status = enabled ? "active" : "inactive";
+    // El dueño pudo cambiar su nombre en el perfil después de publicarse.
+    existing.name = user.name;
+    existing.surname = user.surname ?? "";
+    // Sólo se rellena lo que está vacío: una lista recortada a mano es una
+    // decisión del dueño y no se pisa.
+    if (!existing.services?.length) existing.services = allServiceIDs;
+    if (!existing.branches?.length) existing.branches = allBranchIDs;
+    await existing.save();
+    return serialize(existing);
+  }
+
+  if (!enabled) return { disabled: true };
+
+  // El índice único (businessID, email) rebota si el dueño ya se invitó a sí
+  // mismo como empleado; conviene decirlo antes de que explote el create.
+  const emailTaken = await EmployeeModel.findOne({ businessID, email: user.email });
+  if (emailTaken) return "OWNER_EMAIL_CONFLICT";
+
+  // Arranca prestando todo lo que el negocio ofrece hoy: es el caso esperable y
+  // deja el registro válido de entrada (servicios y sucursales son obligatorios).
+  const employee = await EmployeeModel.create({
+    businessID,
+    ownerID,
+    userID: ownerID,
+    name: user.name,
+    surname: user.surname ?? "",
+    email: user.email,
+    status: "active",
+    isOwner: true,
+    permissions: [],
+    services: allServiceIDs,
+    branches: allBranchIDs,
+  });
+
+  return serialize(employee);
+};
+
 const SGetPublicEmployeesByBusiness = async (businessID: string) => {
   const employees = await EmployeeModel.find({ businessID, status: "active" })
-    .select("_id name surname branches services userID");
+    .select("_id name surname branches services userID isOwner");
 
   const userIDs = employees.map((e) => e.userID).filter((id): id is string => !!id);
 
@@ -416,6 +525,7 @@ const SGetPublicEmployeesByBusiness = async (businessID: string) => {
     surname: e.surname,
     branches: e.branches,
     services: e.services,
+    isOwner: !!e.isOwner,
     profileImage: e.userID ? (profileImageMap[e.userID] ?? "user.png") : "user.png",
   }));
 };
@@ -434,4 +544,5 @@ export {
   SAcceptInvitation,
   SSelectContext,
   SGetPublicEmployeesByBusiness,
+  SSetOwnerAsProvider,
 };

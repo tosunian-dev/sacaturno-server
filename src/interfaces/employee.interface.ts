@@ -19,4 +19,7 @@ export interface IEmployee {
   permissions?: EmployeePermission[];
   branches?: string[];
   services?: string[];
+  // Registro sintético del dueño: existe sólo para que pueda ofrecerse como
+  // prestador. No se invita, no se elimina y no cuenta contra el plan.
+  isOwner?: boolean;
 }

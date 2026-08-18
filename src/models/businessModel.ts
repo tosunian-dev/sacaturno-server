@@ -60,6 +60,13 @@ const BusinessSchema = new Schema<IBusiness>(
       required: false,
       default: "user.png",
     },
+    // public_id de Cloudinary; sin esto no se puede borrar la imagen anterior.
+    // Vacío en documentos viejos, que siguen sirviéndose desde disco.
+    imagePublicId: {
+      type: String,
+      required: false,
+      default: "",
+    },
     scheduleAnticipation: {
       type: Number,
       required: true,

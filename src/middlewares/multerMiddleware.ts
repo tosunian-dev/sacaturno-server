@@ -1,22 +1,17 @@
 import { Request } from "express";
-import multer, { diskStorage } from "multer";
+import multer, { memoryStorage } from "multer";
 
-const PATH_STORAGE = `${process.cwd()}/profile_images`;
-
-const storage = diskStorage({
-  destination(req: Request, file: Express.Multer.File, cb: any) {
-    cb(null, PATH_STORAGE);
-  },
-  filename(req: Request, file: Express.Multer.File, cb: any) {
-    const ext = file.originalname.split(".").pop();
-    const fileNameRandom = `profile-image-${Date.now()}.${ext}`;
-    cb(null, fileNameRandom);
-  },
-});
+// Las imágenes van a Cloudinary, así que el archivo solo necesita vivir en
+// memoria el tiempo que tarda el upload: el disco del contenedor es efímero.
+const storage = memoryStorage();
 
 const multerMiddleware = multer({
   storage,
-  fileFilter: (req, file, cb) => {
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+  },
+  fileFilter: (req: Request, file: Express.Multer.File, cb: any) => {
     if (
       file.mimetype == "image/png" ||
       file.mimetype == "image/jpg" ||

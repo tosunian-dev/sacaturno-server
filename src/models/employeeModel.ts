@@ -34,6 +34,13 @@ const EmployeeSchema = new Schema<IEmployee>(
       type: [String],
       default: [],
     },
+    // Marca el registro sintético del dueño. Se excluye del límite del plan, de
+    // los contextos de login y de las acciones de invitación/eliminación.
+    isOwner: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
   },
   { timestamps: true, versionKey: false },
 );
