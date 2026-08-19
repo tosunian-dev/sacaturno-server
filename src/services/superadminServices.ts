@@ -10,6 +10,7 @@ import PlanPaymentModel from "../models/planPaymentModel";
 import EmployeeModel from "../models/employeeModel";
 import BranchModel from "../models/branchModel";
 import { PLAN_LIMITS, SubscriptionType } from "../config/planLimits";
+import { escapeRegExp } from "../utils/regex";
 
 const DEFAULT_ACTIVITY_WINDOW_DAYS = 30;
 
@@ -253,7 +254,7 @@ const SGetBusinesses = async (req: Request) => {
   const category = String(req.query.category || "").trim();
 
   const filter: Record<string, unknown> = {};
-  if (search) filter.name = { $regex: search, $options: "i" };
+  if (search) filter.name = { $regex: escapeRegExp(search), $options: "i" };
   if (category) filter.businessCategory = category;
 
   const [total, businesses] = await Promise.all([
@@ -368,8 +369,9 @@ const SGetUsers = async (req: Request) => {
   const pageSize = 20;
   const search = String(req.query.search || "").trim();
 
+  const safe = escapeRegExp(search);
   const filter = search
-    ? { $or: [{ name: { $regex: search, $options: "i" } }, { surname: { $regex: search, $options: "i" } }, { email: { $regex: search, $options: "i" } }] }
+    ? { $or: [{ name: { $regex: safe, $options: "i" } }, { surname: { $regex: safe, $options: "i" } }, { email: { $regex: safe, $options: "i" } }] }
     : {};
 
   const [total, users] = await Promise.all([

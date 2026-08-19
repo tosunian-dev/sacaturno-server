@@ -64,11 +64,19 @@ const buildUserContexts = async (userID: string) => {
 };
 
 const SCreateUser = async (userData: IUser) => {
+  // Guard anti-inyección NoSQL: email/password deben ser strings antes de tocar la
+  // base (findOne) o bcrypt. Si llega un objeto ({"$ne":null}), Mongo lo tomaría
+  // como operador.
+  if (typeof userData?.email !== "string" || typeof userData?.password !== "string") {
+    return "INVALID_EMAIL";
+  }
   const emailExists = await UserModel.findOne({ email: userData.email });
   if (emailExists) {
     return "USER_EXISTS";
   }
-  if (userData.phone) {
+  const phoneIsScalar =
+    typeof userData.phone === "number" || typeof userData.phone === "string";
+  if (userData.phone && phoneIsScalar) {
     const phoneExists = await UserModel.findOne({ phone: userData.phone });
     if (phoneExists) {
       return "PHONE_EXISTS";
@@ -82,9 +90,21 @@ const SCreateUser = async (userData: IUser) => {
     return "MISSING_PASSWORD";
   }
   const pwEncrypted = await encrypt(userData.password);
-  userData.password = pwEncrypted;
-  const createdUser = await UserModel.create(userData);
-  SSendConfirmationEmail(createdUser);
+  // Whitelist explícita de campos: NUNCA se confía en el body para `verified`,
+  // `authProvider`, `googleId`, `_id`, etc. Registrarse con { verified: true }
+  // saltearía la confirmación por email; { _id } permitiría fijar el propio id.
+  // `verified` (false) y `authProvider` ("local") toman el default del schema.
+  const createData: Record<string, unknown> = {
+    name: userData.name,
+    surname: userData.surname,
+    email: userData.email,
+    password: pwEncrypted,
+  };
+  if (phoneIsScalar) {
+    createData.phone = userData.phone;
+  }
+  const createdUser = await UserModel.create(createData);
+  SSendConfirmationEmail(createdUser as unknown as IUser);
   return { createdUser, msg: "USER_CREATED_SUCCESSFULLY" };
 };
 
@@ -158,10 +178,25 @@ const SGetUserByEmail = async ({ params }: Request) => {
   return { _id: user._id };
 };
 
-const SEditUser = async (req: IUser) => {
-  const editedUser = await UserModel.findOneAndUpdate({ _id: req._id }, req, {
-    new: true,
-  });
+const SEditUser = async (
+  userId: string,
+  body: { name?: unknown; surname?: unknown; phone?: unknown }
+) => {
+  // El id sale del token (checkAuth), NUNCA del body: antes se usaba `req._id`,
+  // así que pasando otro _id se editaba a otro usuario (IDOR).
+  // Whitelist explícita: el perfil solo edita name/surname/phone. Pasar el body
+  // entero permitía mass assignment (verified, password, email, authProvider…).
+  const allowedFields: Record<string, unknown> = {};
+  if (typeof body?.name === "string") allowedFields.name = body.name;
+  if (typeof body?.surname === "string") allowedFields.surname = body.surname;
+  if (typeof body?.phone === "number" || typeof body?.phone === "string") {
+    allowedFields.phone = body.phone;
+  }
+  const editedUser = await UserModel.findByIdAndUpdate(
+    userId,
+    { $set: allowedFields },
+    { new: true }
+  );
   return editedUser;
 };
 
@@ -172,6 +207,12 @@ const SLoginUser = async ({
   email: string;
   password: string;
 }) => {
+  // Defensa contra inyección de operadores NoSQL: si el body manda `email` o
+  // `password` como objeto (p.ej. {"$ne":null}), Mongo los interpretaría como
+  // operadores de query. Exigimos strings; si no, cortamos como credencial inválida.
+  if (typeof email !== "string" || typeof password !== "string") {
+    return "USER_NOT_FOUND";
+  }
   const userExists = await UserModel.findOne({ email });
   if (!userExists) {
     return "USER_NOT_FOUND";

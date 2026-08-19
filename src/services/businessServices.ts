@@ -19,6 +19,7 @@ import { IDaySchedule } from "../interfaces/daySchedule.interface";
 import DayScheduleModel from "../models/dayScheduleModel";
 import { generateAppointments } from "../utils/appointmentGenerator";
 import AppointmentModel from "../models/appointmentModel";
+import { escapeRegExp } from "../utils/regex";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
   if (typeof businessData.slug === "string") {
@@ -101,9 +102,24 @@ const SEditBusinessData = async (businessData: IBusiness) => {
     slugExists.length === 0 ||
     slugExists[0]._id.toString() === businessData._id
   ) {
+    // Whitelist: solo los campos que el negocio edita desde su formulario. Pasar
+    // el body entero permitía mass assignment de campos sensibles del schema:
+    // ownerID (robar/ceder el negocio), mpLinked/mpAccessToken/mpAccountEmail
+    // (falsear el vínculo con Mercado Pago), image/imagePublicId (saltear la subida).
+    const BUSINESS_EDITABLE = [
+      "name", "businessType", "businessCategory", "email", "phone",
+      "street", "number", "city", "province", "slug",
+      "scheduleAnticipation", "scheduleDaysToCreate", "scheduleEnd",
+      "automaticSchedule", "bookingsEnabled", "cancellationWindowHours",
+    ];
+    const allowed: Record<string, unknown> = {};
+    const src = businessData as unknown as Record<string, unknown>;
+    for (const key of BUSINESS_EDITABLE) {
+      if (src[key] !== undefined) allowed[key] = src[key];
+    }
     const editedBusiness = await BusinessModel.findByIdAndUpdate(
-      { _id: businessData._id },
-      businessData,
+      businessData._id,
+      { $set: allowed },
       { new: true }
     );
     if (editedBusiness === null) {
@@ -138,8 +154,16 @@ const SUpdateBusinessImage = async (imageData: {
 };
 
 const SGetBusinessByName = async ({ params }: Request) => {
-  const regex = new RegExp(params.name, "i");
-  const businessData = await BusinessModel.find({ name: regex });
+  // Ruta PÚBLICA: el nombre viene de la URL sin sanitizar. Se escapa para tratarlo
+  // como texto literal (evita ReDoS, ".*" que lista toda la colección, y "(" que
+  // rompía `new RegExp`). Sigue siendo búsqueda por substring, case-insensitive.
+  const safe = escapeRegExp(params.name);
+  if (!safe) {
+    return "BUSINESS_NOT_FOUND";
+  }
+  const businessData = await BusinessModel.find({
+    name: { $regex: safe, $options: "i" },
+  });
   if (businessData.length === 0) {
     return "BUSINESS_NOT_FOUND";
   }
@@ -236,9 +260,16 @@ const SEditServiceData = async (serviceData: {
     return "DEPOSIT_EXCEEDS_PRICE";
   }
 
+  // Whitelist: nunca el body entero, para que no se pueda mover el servicio a
+  // otro negocio (businessID/ownerID) vía mass assignment.
+  const allowed: Record<string, unknown> = {};
+  const src = serviceData as unknown as Record<string, unknown>;
+  for (const key of ["name", "description", "price", "duration", "depositAmount"]) {
+    if (src[key] !== undefined) allowed[key] = src[key];
+  }
   const editedService = await ServiceModel.findByIdAndUpdate(
-    { _id: serviceData.id },
-    serviceData,
+    serviceData.id,
+    { $set: allowed },
     { new: true }
   );
   if (editedService) return editedService;
@@ -248,9 +279,16 @@ const SEditServiceData = async (serviceData: {
 };
 
 const SEditScheduleAutomationParams = async (req: Request) => {
+  // Whitelist: este endpoint solo toca los 3 parámetros de automatización. Pasar
+  // req.body entero a BusinessModel permitía escribir CUALQUIER campo del negocio
+  // (ownerID, mpLinked, slug…) y encima sin el chequeo de slug único.
+  const automationUpdate: Record<string, unknown> = {};
+  for (const key of ["scheduleAnticipation", "scheduleDaysToCreate", "automaticSchedule"]) {
+    if (req.body?.[key] !== undefined) automationUpdate[key] = req.body[key];
+  }
   const scheduleData = await BusinessModel.findByIdAndUpdate(
-    { _id: req.params.businessID },
-    req.body
+    req.params.businessID,
+    { $set: automationUpdate }
   );
 
   // regenerar turnos al guardar cambios estando automaticSchedule activo

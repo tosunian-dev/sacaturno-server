@@ -61,11 +61,23 @@ const SGetDaysAndAppointmentsByBusinessID = async ({ params }: Request) => {
   return { days, appointments };
 };
 
+// Campos que el formulario de horarios edita en un día. Excluye ownerID/businessID
+// (mover el día a otro negocio) y cualquier otro campo del schema.
+const DAY_EDITABLE = ["day", "appointmentDuration", "dayStart", "dayEnd", "enabled"];
+
+const pickDayFields = (src: Record<string, unknown>): Record<string, unknown> => {
+  const out: Record<string, unknown> = {};
+  for (const key of DAY_EDITABLE) {
+    if (src?.[key] !== undefined) out[key] = src[key];
+  }
+  return out;
+};
+
 // EDIT DAY
 const SEditDay = async (req: Request) => {
   const editedDay = await DayScheduleModel.findByIdAndUpdate(
     req.params.dayID,
-    req.body,
+    { $set: pickDayFields(req.body) },
     { new: true }
   );
   return editedDay;
@@ -92,7 +104,16 @@ const SCreateScheduleAppointment = async ({ body }: Request) => {
       }
     }
   }
-  const newAppointment = await AppointmentScheduleModel.create(body);
+  // Whitelist explícita de los campos de la plantilla (evita colar _id u otros).
+  const SCHEDULE_APPOINTMENT_FIELDS = [
+    "dayScheduleID", "ownerID", "businessID", "service", "price", "day",
+    "dayNumber", "description", "start", "end", "employeeID", "branchID",
+  ];
+  const createData: Record<string, unknown> = {};
+  for (const key of SCHEDULE_APPOINTMENT_FIELDS) {
+    if (body?.[key] !== undefined) createData[key] = body[key];
+  }
+  const newAppointment = await AppointmentScheduleModel.create(createData);
   return newAppointment;
 };
 
@@ -275,7 +296,10 @@ const SDeleteScheduleAppointment = async ({ params }: Request) => {
 const SEditManyAppointments = async ({ body }: Request) => {
   await Promise.all(
     (body as IDaySchedule[]).map((day) =>
-      DayScheduleModel.findByIdAndUpdate(day._id, day)
+      DayScheduleModel.findByIdAndUpdate(
+        day._id,
+        { $set: pickDayFields(day as unknown as Record<string, unknown>) }
+      )
     )
   );
 };

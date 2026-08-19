@@ -21,6 +21,7 @@ import { serialize } from "cookie";
 import fs from "fs";
 import path from "path";
 import { RequestExtended } from "../interfaces/reqExtended.interface";
+import { JwtContextPayload } from "../utils/jwtGen.handle";
 
 const loginUser = async ({ body }: Request, res: Response) => {
   try {
@@ -86,9 +87,10 @@ const createUser = async ({ body }: Request, res: Response) => {
   }
 };
 
-const editUser = async ({ body }: Request, res: Response) => {
+const editUser = async (req: RequestExtended, res: Response) => {
   try {
-    const response_data = await SEditUser(body);
+    const user = req.user as JwtContextPayload;
+    const response_data = await SEditUser(user.userId, req.body);
     res.send({ response_data, msg: "USER_EDIT_SUCCESFULLY" });
   } catch (error) {
     handleError(res, "ERROR_EDIT_USER");

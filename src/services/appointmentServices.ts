@@ -83,7 +83,20 @@ const SCreateAppointment = async (appointmentData: IAppointment) => {
       }
     }
   }
-  const appointment = await AppointmentModel.create(appointmentData);
+  // Whitelist: incluye los campos de una carga manual (incluso walk-in "booked"
+  // con datos del cliente), pero excluye los de pago/seña y tokens, que solo los
+  // setean el flujo de reserva/pago y la cancelación (depositStatus, mpPaymentID,
+  // mpPreferenceID, depositHoldUntil, cancelToken, reassignedAt, sentReminders).
+  const CREATE_APPOINTMENT_FIELDS = [
+    "businessID", "clientID", "start", "end", "title", "email", "name",
+    "phone", "status", "service", "description", "price", "employeeID", "branchID",
+  ];
+  const createData: Record<string, unknown> = {};
+  const src = appointmentData as unknown as Record<string, unknown>;
+  for (const key of CREATE_APPOINTMENT_FIELDS) {
+    if (src[key] !== undefined) createData[key] = src[key];
+  }
+  const appointment = await AppointmentModel.create(createData);
   return appointment;
 };
 
