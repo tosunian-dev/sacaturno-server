@@ -327,7 +327,9 @@ const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
   if (params.ownerID) {
     const user = await UserModel.findOne({ _id: params.ownerID });
     if (user) {
-      const token = jwtGen(params.ownerID);
+      // Vida corta: el link de reseteo caduca en 1 hora, no en los 30 días
+      // por defecto. Reduce la ventana si el email se filtra o queda expuesto.
+      const token = jwtGen(params.ownerID, "1h");
       const resend = new Resend(process.env.RESEND_KEY);
       // SEND EMAIL WITH RESEND
       const { error } = await resend.emails.send({
@@ -360,13 +362,28 @@ interface payload extends JwtPayload {
 }
 
 const SUpdatePasswordOnRecovery = async (req: Request) => {
-  const userData = verifyToken(req.params.token) as payload;
-  const encryptedPassword = await encrypt(req.body.password);
+  const { password } = req.body;
+  if (typeof password !== "string" || password.length < 6) {
+    return "INVALID_PASSWORD";
+  }
+
+  // verifyToken lanza si el token está vencido o adulterado. Con la vida corta
+  // del link (1h) eso ahora es un caso esperado, no un bug: lo atrapamos y
+  // devolvemos un error controlado en vez de un 500 con stack trace.
+  let userData: payload;
+  try {
+    userData = verifyToken(req.params.token) as payload;
+  } catch (error) {
+    return "INVALID_OR_EXPIRED_TOKEN";
+  }
+
+  const encryptedPassword = await encrypt(password);
   await UserModel.findOneAndUpdate(
     { _id: userData.userId },
     { password: encryptedPassword },
     { new: true },
   );
+  return "PASSWORD_UPDATED";
 };
 
 const SUpdateFirstLoginStatus = async (params: {

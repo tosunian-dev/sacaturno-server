@@ -17,7 +17,7 @@ import {
   setBackupPassword,
   getPasswordStatus,
 } from "../controllers/userController";
-import multerMiddleware from "../middlewares/multerMiddleware";
+import { uploadProfileImage } from "../middlewares/multerMiddleware";
 import { checkAuth } from "../middlewares/authMiddleware";
 import {
   userLoginLimiters,
@@ -42,7 +42,7 @@ router.get("/user/getbyemail/:email", getUserByEmail);
 router.post(
   "/user/updateimage",
   checkAuth,
-  multerMiddleware.single("profile_image"),
+  uploadProfileImage,
   updateUserImage
 );
 router.get("/user/getprofilepic/:img", getProfilePic);

@@ -159,7 +159,14 @@ const sendPasswordRecoveryEmail = async (req: Request, res: Response) => {
 const updatePasswordOnRecovery = async (req: Request, res: Response) => {
   try {
     const response_data = await SUpdatePasswordOnRecovery(req);
-    res.send(response_data);
+    if (
+      response_data === "INVALID_OR_EXPIRED_TOKEN" ||
+      response_data === "INVALID_PASSWORD"
+    ) {
+      res.status(400).send({ msg: response_data });
+      return;
+    }
+    res.send({ msg: response_data });
   } catch (error) {
     handleError(res, "ERROR_SEND_RECOVERY_EMAIL");
   }

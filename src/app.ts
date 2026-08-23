@@ -1,6 +1,7 @@
 import express from "express";
 import connectDB from "./config/db";
 import cors from "cors";
+import helmet from "helmet";
 import userRoutes from "./routes/userRoutes";
 import appointmentRoutes from "./routes/appointmentRoutes";
 import businessRoutes from "./routes/businessRoutes";
@@ -58,6 +59,18 @@ cron.schedule(" 10 3 * * * ", () => {
 cron.schedule("0 * * * *", () => {
   handleAppointmentReminders();
 }, { timezone: "America/Argentina/Buenos_Aires" });
+
+// SECURITY HEADERS (helmet)
+// API JSON: los headers de seguridad no rompen respuestas de datos y de paso
+// saca el `X-Powered-By: Express` que le regala el stack al atacante.
+// crossOriginResourcePolicy en "cross-origin" porque el frontend vive en otro
+// dominio (Netlify) y consume esta API; el default "same-origin" podría
+// bloquear la carga de recursos servidos por el backend.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
 
 // CORS SETTINGS
 const allowedOrigins = new Set([

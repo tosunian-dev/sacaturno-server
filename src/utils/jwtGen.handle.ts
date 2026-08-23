@@ -1,4 +1,4 @@
-import { sign, verify } from 'jsonwebtoken'
+import { sign, verify, SignOptions } from 'jsonwebtoken'
 
 // Sin fallback a propósito: un secreto por defecto ('A'/'B') convierte un typo
 // en la env var en un compromiso total (cualquiera firma tokens de usuario o de
@@ -26,9 +26,15 @@ export interface PlatformAdminJwtPayload {
     email: string;
 }
 
-const jwtGen = (input: string | JwtContextPayload): string => {
+// expiresIn por defecto "30d" (sesiones y verificación de email). El flujo de
+// recuperación de contraseña pasa una duración corta: un link que resetea la
+// clave no puede seguir vivo 30 días.
+const jwtGen = (
+    input: string | JwtContextPayload,
+    expiresIn: SignOptions["expiresIn"] = "30d"
+): string => {
     const payload = typeof input === "string" ? { userId: input } : input;
-    return sign(payload, jwt_secret, { expiresIn: "30d" });
+    return sign(payload, jwt_secret, { expiresIn });
 }
 
 const verifyToken = (token: string) => {

@@ -17,7 +17,7 @@ import {
   getAllBusinessSlugs,
 } from "../controllers/businessController";
 import { checkAuth } from "../middlewares/authMiddleware";
-import multerMiddleware from "../middlewares/multerMiddleware";
+import { uploadProfileImage } from "../middlewares/multerMiddleware";
 const router = Router();
 
 router.post("/business/create", checkAuth, createBusiness);
@@ -29,7 +29,7 @@ router.put("/business/edit", checkAuth, editBusinessData);
 router.post(
   "/business/updateimage",
   checkAuth,
-  multerMiddleware.single("profile_image"),
+  uploadProfileImage,
   updateBusinessImage
 );
 
