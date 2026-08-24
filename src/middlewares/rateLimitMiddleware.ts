@@ -4,7 +4,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 // Limitadores para endpoints públicos sensibles (fuerza bruta y abuso de envío
 // de correos). Dependen de `app.set("trust proxy", 1)` en app.ts: sin eso todos
 // los requests comparten la IP del proxy de Railway y el límite afecta a todos.
-//
+
 // STORE (decisión F-17, diferida a propósito): usan el MemoryStore por defecto,
 // que guarda los contadores en la RAM del proceso. Dos límites conocidos:
 //   1) se resetean en cada deploy/reinicio (menor: el atacante no fuerza deploys).

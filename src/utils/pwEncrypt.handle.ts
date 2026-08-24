@@ -2,7 +2,7 @@ import { hash, compare, getRounds, hashSync } from "bcryptjs"
 
 // Cost factor de bcrypt: cada +1 duplica el trabajo (2^N iteraciones). Protege
 // contra ataques offline sobre un dump de la base, donde el rate limiting no
-// aplica. Era 7 (~24ms por hash); 10 es el default de bcrypt (~78ms).
+// aplica. Era 7 (24ms aprox por hash); 10 es el default de bcrypt (aprox 78ms).
 const BCRYPT_COST = 10
 
 // Hash "señuelo" precomputado una vez al arrancar. En el login, cuando el email

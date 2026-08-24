@@ -95,13 +95,15 @@ app.use(
   })
 );
 
-// ROUTES
+
 app.use(cookieParser());
 // Límite explícito del body JSON. express.json() ya trae 100kb por defecto, pero
 // fijarlo acá lo vuelve un control auditable e inmune a cambios de default al
 // actualizar la librería. 100kb es holgado para el JSON más grande de la app
 // (arrays de horarios) y frena un DoS por bufferear payloads enormes en memoria.
 app.use(express.json({ limit: "100kb" }));
+
+// ROUTES
 app.use("/api", userRoutes);
 app.use("/api", appointmentRoutes);
 app.use("/api", businessRoutes);
@@ -115,9 +117,9 @@ app.use("/api", superadminRoutes)
 // PARSE-ERROR HANDLER
 // express.json() lanza al pipeline de errores cuando el body no se puede parsear.
 // Sin este middleware, Express responde una página HTML con el stack (fuga de
-// info + inconsistente con una API JSON). Lo unificamos a JSON limpio:
+// info + inconsistente con una API JSON). Se unifica a JSON limpio:
 //  - body sobre el limit  -> 413 PAYLOAD_TOO_LARGE
-//  - JSON mal formado     -> 400 INVALID_JSON
+//  - JSON invalido     -> 400 INVALID_JSON
 // Debe tener 4 parámetros para que Express lo reconozca como error handler.
 app.use(
   (err: any, _req: Request, res: Response, next: NextFunction) => {
