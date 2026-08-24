@@ -91,7 +91,7 @@ export const handlePlanExpiracy = async () => {
           if (emailError) console.log("Resend error (SC_FREE):", emailError);
         }
       }
-      console.log("EXPIRED SUBSCRIPTION: ", expiredSubscription);
+      console.log("EXPIRED SUBSCRIPTION:", expiredSubscription?._id);
     } catch (error) {
       console.log(
         `ERROR EXECUTING SUBSCRIPTION EXPIRACY FUNCTION ON DATE ${today.format("DD/MM/YYYY")}`,

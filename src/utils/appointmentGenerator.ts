@@ -6,8 +6,6 @@ import { IAppointment } from "../interfaces/appointment.interface";
 import AppointmentModel from "../models/appointmentModel";
 
 export const generateAppointments = async (businessData: IBusiness) => {
-  console.log(businessData);
-
   // OBTENER TODOS LOS TURNOS PROGRAMADOS
   const allAppointments: IAppointmentSchedule[] =
     await AppointmentScheduleModel.find({

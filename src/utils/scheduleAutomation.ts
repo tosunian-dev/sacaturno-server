@@ -33,14 +33,6 @@ export const handleScheduleAutomation = async () => {
       "day",
       true
     );
-    console.log(
-      businessData.name,
-      dayDifference,
-      businessData.scheduleAnticipation
-    );
-    if (dayDifference <= businessData.scheduleAnticipation) {
-      console.log(businessData.name, " crear turnos");
-    }
     if (dayDifference <= businessData.scheduleAnticipation) {
       // buscar todos los turnos desde la fecha de hoy y borrarlos
       await AppointmentModel.deleteMany({
@@ -113,12 +105,9 @@ export const handleScheduleAutomation = async () => {
       }
 
       // a scheduleEnd, sumarle scheduleDaysToCreate y actualizar scheduleEnd en businessmodel
-      console.log("prevScheduleEnd", businessData.scheduleEnd);
-
       const nextScheduleEnd = dayjs(businessData.scheduleEnd)
         .add(businessData.scheduleDaysToCreate, "day")
         .toDate();
-      console.log("nextScheduleEnd", nextScheduleEnd);
 
       await BusinessModel.findByIdAndUpdate(
         { _id: businessData._id },

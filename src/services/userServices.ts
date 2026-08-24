@@ -1,5 +1,5 @@
 import UserModel from "../models/userModel";
-import { encrypt, verify, needsRehash } from "../utils/pwEncrypt.handle";
+import { encrypt, verify, needsRehash, DUMMY_HASH } from "../utils/pwEncrypt.handle";
 import { IUser } from "../interfaces/user.interface";
 import { Request, Response } from "express";
 import { jwtGen, verifyToken } from "../utils/jwtGen.handle";
@@ -167,17 +167,6 @@ const SGetUser = async ({ params }: Request) => {
   return user;
 };
 
-const SGetUserByEmail = async ({ params }: Request) => {
-  // Endpoint PÚBLICO (lo usa el flujo de recuperación de contraseña, que solo
-  // necesita el _id). Devolver el documento entero filtraba el hash de la
-  // contraseña y toda la PII del usuario.
-  const user = await UserModel.findOne({ email: params.email }).select("_id");
-  if (user === null) {
-    return "USER_NOT_FOUND";
-  }
-  return { _id: user._id };
-};
-
 const SEditUser = async (
   userId: string,
   body: { name?: unknown; surname?: unknown; phone?: unknown }
@@ -207,15 +196,24 @@ const SLoginUser = async ({
   email: string;
   password: string;
 }) => {
+  // Respuesta unificada para "email inexistente" y "contraseña incorrecta": el
+  // atacante no puede distinguir si la cuenta existe (anti-enumeración). El
+  // frontend igual muestra "Usuario o contraseña incorrectos".
+  const INVALID_CREDENTIALS = "INVALID_CREDENTIALS";
+
   // Defensa contra inyección de operadores NoSQL: si el body manda `email` o
   // `password` como objeto (p.ej. {"$ne":null}), Mongo los interpretaría como
   // operadores de query. Exigimos strings; si no, cortamos como credencial inválida.
   if (typeof email !== "string" || typeof password !== "string") {
-    return "USER_NOT_FOUND";
+    return INVALID_CREDENTIALS;
   }
   const userExists = await UserModel.findOne({ email });
   if (!userExists) {
-    return "USER_NOT_FOUND";
+    // Compara contra el hash señuelo para gastar el mismo tiempo de bcrypt que
+    // un login real: sin esto, "email inexistente" respondería más rápido y
+    // delataría por timing qué cuentas existen, aun con el mensaje unificado.
+    await verify(password, DUMMY_HASH);
+    return INVALID_CREDENTIALS;
   }
   if (userExists.verified === false) {
     return "USER_NOT_VERIFIED";
@@ -228,7 +226,7 @@ const SLoginUser = async ({
   }
   const isPasswordCorrect = await verify(password, pwHashed);
   if (!isPasswordCorrect) {
-    return "WRONG_PASSWORD";
+    return INVALID_CREDENTIALS;
   }
 
   // Rehash progresivo: sube al cost factor actual las passwords hasheadas con
@@ -323,16 +321,31 @@ const SUpdateUserProfileImage = async (imageData: {
   return await UserModel.findOne({ _id: imageData.userId });
 };
 
-const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
-  if (params.ownerID) {
-    const user = await UserModel.findOne({ _id: params.ownerID });
-    if (user) {
-      // Vida corta: el link de reseteo caduca en 1 hora, no en los 30 días
-      // por defecto. Reduce la ventana si el email se filtra o queda expuesto.
-      const token = jwtGen(params.ownerID, "1h");
-      const resend = new Resend(process.env.RESEND_KEY);
-      // SEND EMAIL WITH RESEND
-      const { error } = await resend.emails.send({
+// Respuesta única para TODOS los casos: no revela si el email está registrado
+// (anti-enumeración). El cliente muestra siempre "si existe una cuenta, te
+// enviamos un link", exista o no. El lookup email->id vive acá en el backend;
+// antes se hacía en el navegador vía /getbyemail, que era un oráculo público.
+const RECOVERY_GENERIC_RESPONSE = "RECOVERY_EMAIL_SENT";
+
+const SSendPasswordRecoveryEmail = async ({ body }: Request) => {
+  const { email } = body;
+  // Guard NoSQL: si `email` llega como objeto ({"$ne":null}) Mongo lo tomaría
+  // como operador y matchearía cualquier usuario. Exigimos string.
+  if (typeof email !== "string") {
+    return RECOVERY_GENERIC_RESPONSE;
+  }
+
+  const user = await UserModel.findOne({ email });
+  if (user) {
+    // Vida corta: el link de reseteo caduca en 1 hora, no en los 30 días
+    // por defecto. Reduce la ventana si el email se filtra o queda expuesto.
+    const token = jwtGen(user._id.toString(), "1h");
+    const resend = new Resend(process.env.RESEND_KEY);
+    // Fire-and-forget (sin await): la respuesta tarda lo mismo exista o no la
+    // cuenta, cerrando el timing oracle. Un await dejaría la respuesta ~200ms
+    // más lenta solo cuando el email existe, delatando la cuenta por el reloj.
+    resend.emails
+      .send({
         from: "SacaTurno <noresponder@sacaturno.com.ar>",
         to: [user.email],
         subject: "Restablecé tu contraseña",
@@ -349,12 +362,11 @@ const SSendPasswordRecoveryEmail = async ({ params }: Request) => {
           },
           afterCtaText: "Si no fuiste vos, ignorá este mensaje: tu contraseña sigue igual.",
         }),
-      });
-      if (error) {
-        return console.error({ error });
-      }
-    }
+      })
+      .catch((error) => console.error({ recoveryEmailError: error }));
   }
+
+  return RECOVERY_GENERIC_RESPONSE;
 };
 
 interface payload extends JwtPayload {
@@ -399,11 +411,18 @@ const SUpdateFirstLoginStatus = async (params: {
 };
 
 const SResendConfirmationEmail = async ({ params }: Request) => {
+  // Respuesta única para los tres casos (no existe / ya verificada / se reenvió):
+  // no revela si el email está registrado ni su estado (anti-enumeración). El
+  // mail solo se manda internamente cuando la cuenta existe y está sin verificar.
   const user = await UserModel.findOne({ email: params.email });
-  if (!user) return "USER_NOT_FOUND";
-  if (user.verified) return "USER_ALREADY_VERIFIED";
-  await SSendConfirmationEmail(user);
-  return "EMAIL_SENT";
+  if (user && !user.verified) {
+    // Fire-and-forget (sin await): la respuesta tarda lo mismo en los tres casos,
+    // cerrando el timing oracle que delataría la cuenta por el reloj.
+    SSendConfirmationEmail(user).catch((error) =>
+      console.error({ resendConfirmationError: error })
+    );
+  }
+  return "CONFIRMATION_EMAIL_SENT";
 };
 
 // Permite a un usuario autenticado que aún no tiene contraseña (típicamente
@@ -456,7 +475,6 @@ export {
   SVerifyConfirmToken,
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
-  SGetUserByEmail,
   SUpdateFirstLoginStatus,
   SResendConfirmationEmail,
   SGetServicesByBusinessID,

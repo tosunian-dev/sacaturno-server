@@ -10,7 +10,6 @@ import {
   verifyConfirmToken,
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
-  getUserByEmail,
   updateFirstLoginStatus,
   resendConfirmationEmail,
   getServicesByBusinessID,
@@ -37,7 +36,6 @@ router.post(
 router.post("/user/google", googleLoginLimiters.ipLimiter, googleAuth);
 router.put("/user/editprofile", checkAuth, editUser);
 router.get("/user/get/:ID", checkAuth, getUser);
-router.get("/user/getbyemail/:email", getUserByEmail);
 
 router.post(
   "/user/updateimage",
@@ -53,8 +51,10 @@ router.post(
   resendConfirmationEmail
 );
 // SEND PASSWORD RECOVERY EMAIL
+// El email va en el body; el backend hace el lookup y responde genérico siempre
+// (anti-enumeración). Reemplaza al viejo flujo :ownerID + /getbyemail.
 router.post(
-  "/user/password/recovery/:ownerID",
+  "/user/password/recovery",
   emailSendLimiter,
   sendPasswordRecoveryEmail
 );

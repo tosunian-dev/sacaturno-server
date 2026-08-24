@@ -10,7 +10,6 @@ import {
   SVerifyConfirmToken,
   SSendPasswordRecoveryEmail,
   SUpdatePasswordOnRecovery,
-  SGetUserByEmail,
   SUpdateFirstLoginStatus,
   SResendConfirmationEmail,
   SGetServicesByBusinessID,
@@ -100,15 +99,6 @@ const editUser = async (req: RequestExtended, res: Response) => {
 const getUser = async (req: Request, res: Response) => {
   try {
     const response_data = await SGetUser(req);
-    res.send({ response_data, msg: "USER_GET_SUCCESSFULLY" });
-  } catch (error) {
-    handleError(res, "ERROR_GET_USER");
-  }
-};
-
-const getUserByEmail = async (req: Request, res: Response) => {
-  try {
-    const response_data = await SGetUserByEmail(req);
     res.send({ response_data, msg: "USER_GET_SUCCESSFULLY" });
   } catch (error) {
     handleError(res, "ERROR_GET_USER");
@@ -241,7 +231,6 @@ export {
   verifyConfirmToken,
   sendPasswordRecoveryEmail,
   updatePasswordOnRecovery,
-  getUserByEmail,
   updateFirstLoginStatus,
   resendConfirmationEmail,
   getServicesByBusinessID,
