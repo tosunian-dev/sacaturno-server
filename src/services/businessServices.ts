@@ -22,6 +22,9 @@ import AppointmentModel from "../models/appointmentModel";
 import { escapeRegExp } from "../utils/regex";
 
 const SCreateBusiness = async (businessData: IBusiness) => {
+  if (hasIncompleteAddress(businessData as unknown as Record<string, any>)) {
+    return "ADDRESS_INCOMPLETE";
+  }
   if (typeof businessData.slug === "string") {
     businessData.slug = businessData.slug.trim();
   }
@@ -93,7 +96,19 @@ const SGetBusinessByOwnerID = async ({ params }: Request) => {
   return businessData;
 };
 
+// El domicilio del negocio es opcional, pero es todo o nada: con ciudad o
+// provincia en blanco el link a Google Maps puede caer en otra localidad.
+const hasIncompleteAddress = (data: Record<string, any>) => {
+  const parts = ["street", "number", "city", "province"].map((field) =>
+    typeof data[field] === "string" ? data[field].trim() : ""
+  );
+  return parts.some(Boolean) && !parts.every(Boolean);
+};
+
 const SEditBusinessData = async (businessData: IBusiness) => {
+  if (hasIncompleteAddress(businessData as unknown as Record<string, any>)) {
+    return "ADDRESS_INCOMPLETE";
+  }
   if (typeof businessData.slug === "string") {
     businessData.slug = businessData.slug.trim();
   }

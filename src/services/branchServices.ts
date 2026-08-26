@@ -10,7 +10,16 @@ const SGetBranchesByBusiness = async ({ params }: Request) => {
   return BranchModel.find({ businessID: params.businessID, deletedAt: null });
 };
 
+// El domicilio completo es lo que hace que el link a Google Maps caiga en el
+// local y no en otra localidad con el mismo nombre de calle.
+const hasFullAddress = (body: Record<string, any>) =>
+  ["street", "number", "city", "province"].every(
+    (field) => typeof body[field] === "string" && body[field].trim().length > 0
+  );
+
 const SCreateBranch = async ({ body }: Request) => {
+  if (!hasFullAddress(body)) return "BRANCH_ADDRESS_REQUIRED";
+
   const subscription = await SubscriptionModel.findOne({ businessID: body.businessID });
   const { maxBranches } = getPlanLimits(subscription?.subscriptionType);
   if (maxBranches === 0) return "PLAN_REQUIRED";
@@ -27,8 +36,8 @@ const SCreateBranch = async ({ body }: Request) => {
     name: body.name,
     street: body.street,
     number: body.number,
-    city: body.city ?? null,
-    province: body.province ?? null,
+    city: body.city.trim(),
+    province: body.province.trim(),
     phone: body.phone ?? null,
     email: body.email ?? null,
   });
@@ -120,6 +129,13 @@ const SCreateBranch = async ({ body }: Request) => {
 };
 
 const SEditBranch = async ({ body, params }: Request) => {
+  // Una edición puede mandar sólo algunos campos, pero ninguno de los del
+  // domicilio puede quedar vacío: la sucursal dejaría de ser ubicable en Maps.
+  const blankAddressField = ["street", "number", "city", "province"].some(
+    (field) => body[field] !== undefined && String(body[field] ?? "").trim().length === 0
+  );
+  if (blankAddressField) return "BRANCH_ADDRESS_REQUIRED";
+
   if (body.name) {
     const existing = await BranchModel.findOne({
       businessID: body.businessID,

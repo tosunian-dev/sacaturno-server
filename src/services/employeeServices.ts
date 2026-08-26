@@ -441,6 +441,14 @@ const SSetOwnerAsProvider = async (
   const user = await UserModel.findById(ownerID).select("name surname email profileImage");
   if (!user) return "USER_NOT_FOUND";
 
+  // Publicarse es una preferencia de ficha pública disponible en todos los
+  // planes, incluidos Free y Básico. La suscripción vencida es la excepción:
+  // no habilita nada nuevo. Despublicarse sigue permitido siempre.
+  if (enabled) {
+    const subscription = await SubscriptionModel.findOne({ businessID }).select("subscriptionType");
+    if (subscription?.subscriptionType === "SC_EXPIRED") return "SUBSCRIPTION_EXPIRED";
+  }
+
   const serialize = (employee: any) => ({
     _id: employee._id,
     name: employee.name,

@@ -81,6 +81,7 @@ const setOwnerAsProvider = async (req: RequestExtended, res: Response) => {
     if (result === "BUSINESS_NOT_FOUND") return res.status(404).send("BUSINESS_NOT_FOUND");
     if (result === "USER_NOT_FOUND") return res.status(404).send("USER_NOT_FOUND");
     if (result === "OWNER_EMAIL_CONFLICT") return res.status(409).send("OWNER_EMAIL_CONFLICT");
+    if (result === "SUBSCRIPTION_EXPIRED") return res.status(403).send("SUBSCRIPTION_EXPIRED");
     return res.status(200).json(result);
   } catch (error) {
     handleError(res, "ERROR_SET_OWNER_PROVIDER");

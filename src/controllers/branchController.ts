@@ -24,6 +24,7 @@ const createBranch = async (req: RequestExtended, res: Response) => {
     if (user?.role !== "owner") return res.status(403).send("FORBIDDEN");
 
     const result = await SCreateBranch(req);
+    if (result === "BRANCH_ADDRESS_REQUIRED") return res.status(400).send("BRANCH_ADDRESS_REQUIRED");
     if (result === "PLAN_REQUIRED") return res.status(402).send("PLAN_REQUIRED");
     if (result === "BRANCH_LIMIT_REACHED") return res.status(400).send("BRANCH_LIMIT_REACHED");
     if (result === "BRANCH_NAME_TAKEN") return res.status(409).send("BRANCH_NAME_TAKEN");
@@ -41,6 +42,7 @@ const editBranch = async (req: RequestExtended, res: Response) => {
     if (user?.role !== "owner") return res.status(403).send("FORBIDDEN");
 
     const result = await SEditBranch(req);
+    if (result === "BRANCH_ADDRESS_REQUIRED") return res.status(400).send("BRANCH_ADDRESS_REQUIRED");
     if (result === "BRANCH_NOT_FOUND") return res.status(404).send("BRANCH_NOT_FOUND");
     if (result === "BRANCH_NAME_TAKEN") return res.status(409).send("BRANCH_NAME_TAKEN");
     res.send(result);
