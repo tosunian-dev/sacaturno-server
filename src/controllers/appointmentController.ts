@@ -294,9 +294,21 @@ const createAllDayAppointments = async (req: RequestExtended, res: Response) => 
   }
 };
 
-const getDashboardStats = async (req: Request, res: Response) => {
+const getDashboardStats = async (req: RequestExtended, res: Response) => {
   try {
-    const stats = await SGetDashboardStats(req);
+    const user = req.user as JwtContextPayload;
+    if (!(await userCanAccessBusiness(user, req.params.businessID))) {
+      return res.status(403).send("FORBIDDEN");
+    }
+    // Sin view_stats el empleado ve sólo sus propios turnos y nunca la facturación
+    const isEmployee = user?.role === "employee";
+    const canViewStats = isEmployee
+      ? await hasPermission(user.employeeID!, "view_stats")
+      : true;
+    const stats = await SGetDashboardStats(req, {
+      employeeID: canViewStats ? null : user.employeeID,
+      includeRevenue: canViewStats,
+    });
     res.send(stats);
   } catch (error) {
     handleError(res, "ERROR_GET_DASHBOARD_STATS");

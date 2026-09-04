@@ -1177,7 +1177,17 @@ const SGetDaysAndAppointmentsByBusinessID = async ({ params }: Request) => {
   return {days, appointments};
 };
 
-const SGetDashboardStats = async ({ params }: Request) => {
+// `employeeID` acota los conteos a los turnos de ese empleado; `includeRevenue`
+// en false omite monthRevenue del payload en vez de dejar que el front lo esconda.
+interface DashboardStatsOptions {
+  employeeID?: string | null;
+  includeRevenue?: boolean;
+}
+
+const SGetDashboardStats = async (
+  { params }: Request,
+  { employeeID = null, includeRevenue = true }: DashboardStatsOptions = {}
+) => {
   const { businessID } = params;
   const tz = "America/Argentina/Buenos_Aires";
 
@@ -1191,19 +1201,21 @@ const SGetDashboardStats = async ({ params }: Request) => {
 
   const nowDate = now.toDate();
 
-  const [todayRemainingApps, weekBookedApps, monthBookedApps] = await Promise.all([
-    AppointmentModel.find({ businessID, status: "booked", start: { $gte: nowDate, $lte: todayEnd } }),
-    AppointmentModel.find({ businessID, status: "booked", start: { $gte: weekStart, $lte: weekEnd } }),
-    AppointmentModel.find({ businessID, status: "booked", start: { $gte: monthStart, $lte: monthEnd } }),
-  ]);
+  const base = { businessID, status: "booked", ...(employeeID ? { employeeID } : {}) };
 
-  const monthRevenue = monthBookedApps.reduce((sum, a) => sum + (a.price || 0), 0);
+  const [todayRemainingApps, weekBookedApps, monthBookedApps] = await Promise.all([
+    AppointmentModel.find({ ...base, start: { $gte: nowDate, $lte: todayEnd } }),
+    AppointmentModel.find({ ...base, start: { $gte: weekStart, $lte: weekEnd } }),
+    AppointmentModel.find({ ...base, start: { $gte: monthStart, $lte: monthEnd } }),
+  ]);
 
   return {
     todayRemaining: todayRemainingApps.length,
     weekBooked: weekBookedApps.length,
     monthBooked: monthBookedApps.length,
-    monthRevenue,
+    ...(includeRevenue
+      ? { monthRevenue: monthBookedApps.reduce((sum, a) => sum + (a.price || 0), 0) }
+      : {}),
   };
 };
 
