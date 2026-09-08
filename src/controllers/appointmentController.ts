@@ -25,6 +25,7 @@ import {
 import { RequestExtended } from "../interfaces/reqExtended.interface";
 import { JwtContextPayload } from "../utils/jwtGen.handle";
 import { hasPermission } from "../utils/checkPermission";
+import { employeeAgendaScope } from "../utils/appointmentScope";
 import { userCanAccessBusiness, resolveBusinessID } from "../utils/ownership";
 import AppointmentModel from "../models/appointmentModel";
 
@@ -86,7 +87,10 @@ const getAppointmentsByBusinessID = async (req: RequestExtended, res: Response) 
     if (!(await userCanAccessBusiness(user, req.params.businessID))) {
       return res.status(403).send("FORBIDDEN");
     }
-    const appointmentBooked = await SGetAppointmentsByBusinessID(req);
+    const appointmentBooked = await SGetAppointmentsByBusinessID(
+      req,
+      await employeeAgendaScope(user)
+    );
     res.send(appointmentBooked);
   } catch (error) {
     handleError(res, "ERROR_GET_APPOINTMENT");
@@ -266,7 +270,10 @@ const getTodayAppointmentsByBusinessID = async (
     if (!(await userCanAccessBusiness(user, req.params.businessID))) {
       return res.status(403).send("FORBIDDEN");
     }
-    const appointmentBooked = await SGetTodayAppointmentsByBusinessID(req);
+    const appointmentBooked = await SGetTodayAppointmentsByBusinessID(
+      req,
+      await employeeAgendaScope(user)
+    );
     res.send(appointmentBooked);
   } catch (error) {
     handleError(res, "ERROR_GET_APPOINTMENT");

@@ -6,6 +6,7 @@ import { SCheckEmployeeAppointmentConflict } from "./employeeServices";
 import { SRefundDeposit } from "./refundServices";
 import EmployeeModel from "../models/employeeModel";
 import { Request } from "express";
+import { FilterQuery } from "mongoose";
 import crypto from "crypto";
 import { Resend } from "resend";
 import dayjs from "dayjs";
@@ -634,9 +635,13 @@ const SAssignManyAppointments = async (
   return { assigned, failed };
 };
 
-const SGetAppointmentsByBusinessID = async ({ params }: Request) => {
+const SGetAppointmentsByBusinessID = async (
+  { params }: Request,
+  scope: FilterQuery<any> | null = null
+) => {
   const appointment = await AppointmentModel.find({
     businessID: params.businessID,
+    ...(scope ?? {}),
   });
   return appointment;
 };
@@ -656,12 +661,16 @@ const SGetPublicAppsByBusinessID = async ({ params }: Request) => {
   return appointments;
 };
 
-const SGetTodayAppointmentsByBusinessID = async ({ params }: Request) => {
+const SGetTodayAppointmentsByBusinessID = async (
+  { params }: Request,
+  scope: FilterQuery<any> | null = null
+) => {
   const now = dayjs().toDate();
   const end = dayjs().endOf("date").toDate();
   const appointments = await AppointmentModel.find({
     start: { $gte: now, $lte: end },
     businessID: params.businessID,
+    ...(scope ?? {}),
   });
   return appointments;
 };
