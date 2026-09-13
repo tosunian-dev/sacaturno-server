@@ -13,7 +13,7 @@
 
 ---
 
-## Qué es esto
+## Acerca del repositorio
 
 API REST en **Express + TypeScript** que sostiene [SacaTurno](https://sacaturno.com.ar), un SaaS de gestión de turnos para negocios de servicios en Argentina (peluquerías, barberías, spas, etc.). Maneja usuarios, negocios, empleados, sucursales, agenda, turnos, suscripciones y dos integraciones separadas de Mercado Pago (suscripciones de la plataforma y señas de clientes).
 
@@ -28,7 +28,7 @@ Consumido por el [frontend en Next.js](https://github.com/leatosunian/sacaturno-
 - **Mercado Pago — señas**: cada negocio conecta su propia cuenta vía OAuth Marketplace; el cobro de la seña va directo a su cuenta, con webhook idempotente y verificación de firma HMAC
 - **Mercado Pago — suscripciones SaaS**: cobro de los planes propios de SacaTurno (Básico / Pro / Full) a los negocios, con cron de expiración y recordatorios por email
 - **Emails transaccionales** vía Resend (confirmaciones, recordatorios, recuperación de contraseña, vencimiento de plan) con una plantilla HTML unificada
-- **Panel interno de plataforma** (`/backstage`, no listado públicamente): analytics globales de uso, activación y revenue para el dueño del SaaS, con su propio esquema de auth y JWT
+- **Panel interno de plataforma: analytics globales de uso, activación y revenue para el dueño del SaaS, con su propio esquema de auth y JWT
 - **Rate limiting** por IP y por email en endpoints públicos sensibles (login, registro, recuperación de contraseña)
 - **Subida de imágenes** (perfil, logos) a Cloudinary vía Multer
 
