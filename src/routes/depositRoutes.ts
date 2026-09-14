@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { checkAuth } from "../middlewares/authMiddleware";
 import { connectOAuth, oauthCallback, disconnectOAuth } from "../controllers/mpOAuthController";
+import { depositPreferenceLimiter } from "../middlewares/rateLimitMiddleware";
 import {
   createDepositPreference,
   depositWebhook,
@@ -23,7 +24,7 @@ router.delete("/mp/oauth/disconnect", checkAuth, disconnectOAuth);
 // Señas
 
 // crear preferencia para seña de turno
-router.post("/mp/deposit/create-preference", createDepositPreference);
+router.post("/mp/deposit/create-preference", depositPreferenceLimiter, createDepositPreference);
 // webhook mp para actualizar estado de la seña cuando se paga/rechaza/etc en mp
 router.post("/mp/deposit/webhook", depositWebhook);
 // libera la reserva temporal cuando el cliente vuelve de mp sin pagar

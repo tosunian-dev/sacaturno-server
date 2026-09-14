@@ -15,8 +15,8 @@ export interface IPlanLimits {
 export const PLAN_LIMITS: Record<SubscriptionType, IPlanLimits> = {
   SC_FREE: { maxEmployees: 0, maxBranches: 0, depositsEnabled: true, reminderWindows: ["24h"] },
   SC_BASIC: { maxEmployees: 0, maxBranches: 0, depositsEnabled: true, reminderWindows: ["24h"] },
-  SC_PRO: { maxEmployees: 6, maxBranches: 3, depositsEnabled: true, reminderWindows: ["24h", "5h"] },
-  SC_FULL: { maxEmployees: 10, maxBranches: 5, depositsEnabled: true, reminderWindows: ["24h", "5h", "1h"] },
+  SC_PRO: { maxEmployees: 10, maxBranches: 3, depositsEnabled: true, reminderWindows: ["24h", "5h"] },
+  SC_FULL: { maxEmployees: 20, maxBranches: 5, depositsEnabled: true, reminderWindows: ["24h", "5h", "1h"] },
   SC_EXPIRED: { maxEmployees: 0, maxBranches: 0, depositsEnabled: false, reminderWindows: [] },
 };
 

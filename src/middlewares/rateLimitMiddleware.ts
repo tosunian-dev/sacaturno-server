@@ -77,10 +77,38 @@ const emailSendLimiter = rateLimit({
   limit: 5,
 });
 
+// PUT /appointment/book: la reserva en sí ya es segura ante carreras (filtro
+// atómico condicional en SBookAppointment), así que esto no es para evitar
+// doble reserva — es para que no se pueda golpear el endpoint en loop y
+// generar carga sobre Atlas (plan free) sin ningún costo para quien lo hace.
+// Por IP nomás: no hay cuenta/email en este flujo público. El límite es alto
+// a propósito — un IP compartido (local del negocio, familia en el mismo
+// wifi) puede reservar varios turnos distintos en una sesión legítima.
+const bookAppointmentLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: FIFTEEN_MIN,
+  limit: 20,
+  keyGenerator: (req: Request) => `book:ip:${ipKeyGenerator(req.ip ?? "")}`,
+});
+
+// POST /mp/deposit/create-preference: mismo motivo que bookAppointmentLimiter
+// (la carrera ya está resuelta por el findOneAndUpdate condicional en
+// SCreateDepositPreference), pero acá golpear el endpoint en loop además
+// dispara una llamada real a la API de Mercado Pago por cada intento — cuesta
+// más caro que un simple hit a Atlas, así que va con un límite más chico.
+const depositPreferenceLimiter = rateLimit({
+  ...baseOptions,
+  windowMs: FIFTEEN_MIN,
+  limit: 10,
+  keyGenerator: (req: Request) => `deposit-pref:ip:${ipKeyGenerator(req.ip ?? "")}`,
+});
+
 export {
   userLoginLimiters,
   superadminLoginLimiters,
   googleLoginLimiters,
   registerLimiter,
   emailSendLimiter,
+  bookAppointmentLimiter,
+  depositPreferenceLimiter,
 };

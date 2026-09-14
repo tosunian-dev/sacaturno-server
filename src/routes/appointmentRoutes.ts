@@ -20,6 +20,7 @@ import {
   getCancelledAppointments,
 } from "../controllers/appointmentController";
 import { checkAuth } from "../middlewares/authMiddleware";
+import { bookAppointmentLimiter } from "../middlewares/rateLimitMiddleware";
 
 const router = Router();
 
@@ -36,7 +37,7 @@ router.get(
 /** GET APPOINTMENT BY ID */
 router.get("/appointment/getbyid/:ID", checkAuth, getAppointmentByID);
 /** BOOK APPOINTMENT */
-router.put("/appointment/book", bookAppointment);
+router.put("/appointment/book", bookAppointmentLimiter, bookAppointment);
 /** ASSIGN EMPLOYEE / BRANCH TO AN EXISTING APPOINTMENT */
 router.put("/appointment/assign/:appointmentID", checkAuth, assignAppointment);
 /** BULK ASSIGN OVER EXISTING APPOINTMENTS */
