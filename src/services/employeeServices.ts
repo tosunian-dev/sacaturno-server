@@ -10,7 +10,7 @@ import BranchModel from "../models/branchModel";
 import SubscriptionModel from "../models/subscriptionModel";
 import { getPlanLimits } from "../config/planLimits";
 import dayjs from "dayjs";
-import { Resend } from "resend";
+import { createMailer } from "../utils/mailer";
 import { buildEmail } from "../utils/emailTemplate";
 import { encrypt } from "../utils/pwEncrypt.handle";
 import { jwtGen } from "../utils/jwtGen.handle";
@@ -96,7 +96,7 @@ const SSendInvitationEmail = async (
   businessName: string,
   token: string
 ) => {
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const link = `https://sacaturno.com.ar/invite/${token}`;
   await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",

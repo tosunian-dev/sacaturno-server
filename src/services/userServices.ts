@@ -8,7 +8,7 @@ import {
   deleteImage,
   isCloudinaryConfigured,
 } from "../config/cloudinary";
-import { Resend } from "resend";
+import { createMailer } from "../utils/mailer";
 import { buildEmail } from "../utils/emailTemplate";
 import { JwtPayload } from "jsonwebtoken";
 import { OAuth2Client } from "google-auth-library";
@@ -111,7 +111,7 @@ const SCreateUser = async (userData: IUser) => {
 const SSendConfirmationEmail = async (userData: IUser) => {
   if (userData._id !== undefined) {
     const token = jwtGen(userData._id.toString());
-    const resend = new Resend(process.env.RESEND_KEY);
+    const resend = createMailer();
     // SEND EMAIL WITH RESEND
     const { error } = await resend.emails.send({
       from: "SacaTurno <noresponder@sacaturno.com.ar>",
@@ -340,7 +340,7 @@ const SSendPasswordRecoveryEmail = async ({ body }: Request) => {
     // Vida corta: el link de reseteo caduca en 1 hora, no en los 30 días
     // por defecto. Reduce la ventana si el email se filtra o queda expuesto.
     const token = jwtGen(user._id.toString(), "1h");
-    const resend = new Resend(process.env.RESEND_KEY);
+    const resend = createMailer();
     // Fire-and-forget (sin await): la respuesta tarda lo mismo exista o no la
     // cuenta, cerrando el timing oracle. Un await dejaría la respuesta ~200ms
     // más lenta solo cuando el email existe, delatando la cuenta por el reloj.

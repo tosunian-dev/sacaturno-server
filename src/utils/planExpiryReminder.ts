@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import SubscriptionModel from "../models/subscriptionModel";
 import UserModel from "../models/userModel";
-import { Resend } from "resend";
+import { createMailer } from "./mailer";
 import { buildEmail } from "./emailTemplate";
 import { isPaidPlan, PLAN_LABELS } from "../config/planLimits";
 
@@ -33,7 +33,7 @@ export const handlePlanExpiryReminder = async () => {
     `SUBSCRIPTION EXPIRY REMINDER FUNCTION FOUND ${subscriptions.length} SUBSCRIPTIONS ON DATE ${today.format("DD/MM/YYYY")}`
   );
 
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
 
   for (let i = 0; i < subscriptions.length; i++) {
     const subscription = subscriptions[i];

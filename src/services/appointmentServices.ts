@@ -8,7 +8,7 @@ import EmployeeModel from "../models/employeeModel";
 import { Request } from "express";
 import { FilterQuery } from "mongoose";
 import crypto from "crypto";
-import { Resend } from "resend";
+import { createMailer } from "../utils/mailer";
 import dayjs from "dayjs";
 import updateLocale from "dayjs/plugin/updateLocale";
 import { IBusiness } from "../interfaces/business.interface";
@@ -178,7 +178,7 @@ const SPoolEmailBookedAppointment = async (
   const recipients = employees.map((e) => e.email).filter((email): email is string => !!email);
   if (recipients.length === 0) return;
 
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const { subject, html } = await buildBookingNotification(
     appointmentData,
     businessData,
@@ -235,7 +235,7 @@ const SClientEmailBookedAppointment = async (
 ) => {
   const s = dayjs(appointmentData.start).tz(APPT_TZ);
   const fecha = capitalize(s.format("dddd D [de] MMMM"));
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const displayAddress = await SResolveAppointmentAddress(appointmentData, businessData);
   const contextRows = await appointmentContextRows(appointmentData);
 
@@ -441,7 +441,7 @@ const SClientReassignedBooking = async (
       : contactNote.trim(),
   });
 
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const { error } = await resend.emails.send({
     from: "SacaTurno <noresponder@sacaturno.com.ar>",
     to: [appointmentData.email],
@@ -457,7 +457,7 @@ const SBusinessEmailBookedAppointment = async (
   businessData: IBusiness,
   depositAmount?: number
 ) => {
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const { subject, html } = await buildBookingNotification(
     appointmentData,
     businessData,
@@ -489,7 +489,7 @@ const SEmployeeEmailBookedAppointment = async (
   // sería el mismo turno dos veces en la misma casilla.
   if (employee.isOwner) return;
 
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const { subject, html } = await buildBookingNotification(
     appointmentData,
     businessData,
@@ -1023,7 +1023,7 @@ const SBusinessCancelledBooking = async (
   refundCause: RefundCause = null,
   refunded: boolean = false
 ) => {
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const { subject, html } = await buildCancellationNotification(
     appointmentData,
     businessData,
@@ -1065,7 +1065,7 @@ const SEmployeeCancelledBooking = async (
   // Ya le llegó el aviso de cancelación como negocio: no se duplica.
   if (employee.isOwner) return;
 
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const { subject, html } = await buildCancellationNotification(
     appointmentData,
     businessData,
@@ -1102,7 +1102,7 @@ const SClientCancelledBooking = async (
       .tz(APPT_TZ)
       .format("dddd D [de] MMMM [|] HH:mm [hs]")
   );
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const contactPhone = await SResolveAppointmentPhone(appointmentData, businessData);
 
   const byBusiness = cancelledBy !== "client";
@@ -1401,7 +1401,7 @@ const SClientReminderEmail = async (
   businessData: IBusiness,
   reminderType: string
 ) => {
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
   const displayAddress = await SResolveAppointmentAddress(appointmentData, businessData);
   const contextRows = await appointmentContextRows(appointmentData);
   const contactPhone = await SResolveAppointmentPhone(appointmentData, businessData);
@@ -1480,7 +1480,7 @@ const SClientDepositRefundedSlotTaken = async (
   const appointmentDate = capitalize(
     dayjs(appointmentStart).tz(APPT_TZ).format("dddd D [de] MMMM [|] HH:mm [hs]")
   );
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
 
   const html = buildEmail({
     previewText: `No pudimos confirmar tu turno en ${businessData.name}`,
@@ -1538,7 +1538,7 @@ const SBusinessDepositRefundedSlotTaken = async (
   const appointmentDate = capitalize(
     dayjs(appointmentStart).tz(APPT_TZ).format("dddd D [de] MMMM [|] HH:mm [hs]")
   );
-  const resend = new Resend(process.env.RESEND_KEY);
+  const resend = createMailer();
 
   const html = buildEmail({
     previewText: `Se devolvió una seña: el horario ya estaba tomado`,
